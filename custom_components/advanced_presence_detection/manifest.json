@@ -3,9 +3,9 @@
   "name": "Advanced Presence Detection",
   "codeowners": ["@Vicingtosh"],
   "config_flow": true,
-  "documentation": "https://github.com/Vicingtosh/advanced_presence_detection",
+  "documentation": "https://github.com/Vicingtosh/advanced-presence-detection",
   "integration_type": "helper",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/Vicingtosh/advanced_presence_detection/issues",
+  "issue_tracker": "https://github.com/Vicingtosh/advanced-presence-detection/issues",
   "version": "0.9.1"
 }
