@@ -35,7 +35,7 @@ A control can be a door contact, a lock, a TV switch, an appliance switch, a bed
 3. Add this repository URL:
 
    ```text
-   https://github.com/Vicingtosh/advanced-presence-detection
+   https://github.com/Vicingtosh/advanced_presence_detection
    ```
 
 4. Select **Integration** as the category.
@@ -146,4 +146,4 @@ This repository is prepared for HACS custom repository use and possible default-
 - HACS and hassfest validation workflows are included under `.github/workflows`.
 - A GitHub release should be created for each published version. For this version, use release tag `v0.9.1`.
 
-Before publishing, replace `YOUR_GITHUB_USERNAME` in `manifest.json` and this README with the real GitHub owner name. Also make sure the GitHub repository is public, has a description, has topics, and has issues enabled.
+Before publishing, make sure the GitHub repository is public, has a description, has topics, and has issues enabled.

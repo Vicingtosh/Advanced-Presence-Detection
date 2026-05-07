@@ -1,11 +1,11 @@
 {
   "domain": "advanced_presence_detection",
   "name": "Advanced Presence Detection",
-  "codeowners": ["@YOUR_GITHUB_USERNAME"],
+  "codeowners": ["@Vicingtosh"],
   "config_flow": true,
-  "documentation": "https://github.com/YOUR_GITHUB_USERNAME/advanced_presence_detection",
+  "documentation": "https://github.com/Vicingtosh/advanced_presence_detection",
   "integration_type": "helper",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/YOUR_GITHUB_USERNAME/advanced_presence_detection/issues",
+  "issue_tracker": "https://github.com/Vicingtosh/advanced_presence_detection/issues",
   "version": "0.9.1"
 }
