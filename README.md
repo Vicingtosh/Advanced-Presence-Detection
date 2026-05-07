@@ -35,7 +35,7 @@ A control can be a door contact, a lock, a TV switch, an appliance switch, a bed
 3. Add this repository URL:
 
    ```text
-   https://github.com/YOUR_GITHUB_USERNAME/advanced_presence_detection
+   https://github.com/Vicingtosh/advanced-presence-detection
    ```
 
 4. Select **Integration** as the category.
