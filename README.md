@@ -23,7 +23,7 @@ A control can be a door contact, a lock, a TV switch, an appliance switch, a bed
 
 ## Latest Changes
 
-- Version `0.9.1` keeps the project in the `0.x` version line.
+- Version `0.9.2` keeps the project in the `0.x` version line.
 - Updated the integration icon assets.
 - Added clearly labelled easter egg attributes.
 - Kept this README focused on the latest changes instead of a full version history.
@@ -144,6 +144,6 @@ This repository is prepared for HACS custom repository use and possible default-
 - `manifest.json` includes `domain`, `name`, `documentation`, `issue_tracker`, `codeowners`, `config_flow`, `iot_class`, and `version`.
 - Local brand assets are included under `custom_components/advanced_presence_detection/brand`.
 - HACS and hassfest validation workflows are included under `.github/workflows`.
-- A GitHub release should be created for each published version. For this version, use release tag `v0.9.1`.
+- A GitHub release should be created for each published version. For this version, use release tag `v0.9.2`.
 
 Before publishing, make sure the GitHub repository is public, has a description, has topics, and has issues enabled.
