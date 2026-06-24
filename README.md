@@ -25,20 +25,13 @@ This integration combines motion sensors with one or more **controls**. A contro
 
 ## Installation With HACS
 
-1. Open HACS in Home Assistant.
-2. Open the three-dot menu.
-3. Choose **Custom repositories**.
-4. Add this repository:
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=Vicingtosh&repository=Advanced-Presence-Detection&category=integration" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
 
-   ```text
-   https://github.com/Vicingtosh/Advanced-Presence-Detection
-   ```
+After downloading, restart Home Assistant.
 
-5. Select **Integration** as the category.
-6. Install **Advanced Presence Detection**.
-7. Restart Home Assistant.
-8. Go to **Settings > Devices & services > Add integration**.
-9. Search for **Advanced Presence Detection**.
+Then add via helpers: 
+
+<a href="https://my.home-assistant.io/redirect/helpers/" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/helpers.svg" alt="Open your Home Assistant instance and show your helper entities." /></a>
 
 ## Manual Installation
 
