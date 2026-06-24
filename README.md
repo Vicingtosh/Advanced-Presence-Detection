@@ -41,7 +41,7 @@ Copy this folder into your Home Assistant `custom_components` folder:
 custom_components/advanced_presence_detection
 ```
 
-Restart Home Assistant, then add the integration from **Settings > Devices & services**.
+Restart Home Assistant, then add the integration from **Settings > Devices & services > helpers **.
 
 ## Setup
 
