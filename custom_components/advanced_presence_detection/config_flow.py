@@ -15,13 +15,14 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_CONTROL_ACTIVE_STATES,
     CONF_CONTROL_CLOSED_MODE,
+    CONF_CONTROL_ENTITIES,
     CONF_DEFAULT_COOLDOWN,
-    CONF_DOOR_ENTITIES,
     CONF_FRESH_WINDOW,
     CONF_MOTION_COOLDOWNS,
     CONF_MOTION_ENTITIES,
     CONF_NO_MOTION_TIMEOUT,
     CONF_OPEN_NO_MOTION_TIMEOUT,
+    CONF_UNAVAILABLE_BEHAVIOR,
     CONTROL_CLOSED_MODE_ALL,
     CONTROL_CLOSED_MODE_ANY,
     DEFAULT_COOLDOWN,
@@ -30,7 +31,16 @@ from .const import (
     DEFAULT_NAME,
     DEFAULT_NO_MOTION_TIMEOUT,
     DEFAULT_OPEN_NO_MOTION_TIMEOUT,
+    DEFAULT_UNAVAILABLE_BEHAVIOR,
     DOMAIN,
+    MAX_CONTROL_GRACE_TIME,
+    MAX_COOLDOWN,
+    MAX_TIMEOUT_MINUTES,
+    MIN_CONTROL_GRACE_TIME,
+    MIN_COOLDOWN,
+    MIN_TIMEOUT_MINUTES,
+    UNAVAILABLE_BEHAVIOR_MARK_UNAVAILABLE,
+    UNAVAILABLE_BEHAVIOR_TREAT_INACTIVE,
 )
 
 FIELD_CONTROL_ACTIVE_STATE = "control_active_state"
@@ -39,15 +49,62 @@ FIELD_NO_MOTION_TIMEOUT_MINUTES = "no_motion_timeout_minutes"
 FIELD_OPEN_NO_MOTION_TIMEOUT_MINUTES = "open_no_motion_timeout_minutes"
 OPEN_STATE_CHOICES = [STATE_ON, STATE_OFF]
 CLOSED_MODE_CHOICES = [CONTROL_CLOSED_MODE_ALL, CONTROL_CLOSED_MODE_ANY]
+UNAVAILABLE_BEHAVIOR_CHOICES = [
+    UNAVAILABLE_BEHAVIOR_MARK_UNAVAILABLE,
+    UNAVAILABLE_BEHAVIOR_TREAT_INACTIVE,
+]
 
 
-def _as_list(value: Any) -> list[str]:
-    """Return a selector value as a list."""
+def _entity_ids(value: Any, allowed_domains: set[str]) -> list[str]:
+    """Return valid entity ids from selector data."""
     if value is None:
         return []
     if isinstance(value, str):
-        return [value]
-    return list(value)
+        candidates = [value]
+    else:
+        try:
+            candidates = list(value)
+        except TypeError:
+            return []
+
+    entity_ids: list[str] = []
+    for candidate in candidates:
+        entity_id = str(candidate)
+        domain, separator, _object_id = entity_id.partition(".")
+        if separator and domain in allowed_domains:
+            entity_ids.append(entity_id)
+
+    return entity_ids
+
+
+def _bounded_int(
+    value: Any,
+    default: int,
+    lower: int,
+    upper: int,
+) -> int:
+    """Return an integer limited to the allowed range."""
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return default
+
+    return max(lower, min(upper, number))
+
+
+def _bounded_minutes_from_seconds(value: Any, default_seconds: int) -> int:
+    """Return stored seconds as bounded whole minutes."""
+    try:
+        seconds = int(value)
+    except (TypeError, ValueError):
+        seconds = default_seconds
+
+    return _bounded_int(
+        seconds / 60,
+        int(default_seconds / 60),
+        MIN_TIMEOUT_MINUTES,
+        MAX_TIMEOUT_MINUTES,
+    )
 
 
 def _normalise_base_input(user_input: dict[str, Any]) -> dict[str, Any]:
@@ -58,40 +115,65 @@ def _normalise_base_input(user_input: dict[str, Any]) -> dict[str, Any]:
     if control_closed_mode not in CLOSED_MODE_CHOICES:
         control_closed_mode = DEFAULT_CONTROL_CLOSED_MODE
 
+    unavailable_behavior = str(
+        user_input.get(CONF_UNAVAILABLE_BEHAVIOR, DEFAULT_UNAVAILABLE_BEHAVIOR)
+    )
+    if unavailable_behavior not in UNAVAILABLE_BEHAVIOR_CHOICES:
+        unavailable_behavior = DEFAULT_UNAVAILABLE_BEHAVIOR
+
     if FIELD_NO_MOTION_TIMEOUT_MINUTES in user_input:
-        no_motion_timeout_minutes = int(user_input[FIELD_NO_MOTION_TIMEOUT_MINUTES])
+        no_motion_timeout_minutes = _bounded_int(
+            user_input[FIELD_NO_MOTION_TIMEOUT_MINUTES],
+            int(DEFAULT_NO_MOTION_TIMEOUT / 60),
+            MIN_TIMEOUT_MINUTES,
+            MAX_TIMEOUT_MINUTES,
+        )
     else:
-        no_motion_timeout_minutes = int(
-            int(user_input.get(CONF_NO_MOTION_TIMEOUT, DEFAULT_NO_MOTION_TIMEOUT))
-            / 60
+        no_motion_timeout_minutes = _bounded_minutes_from_seconds(
+            user_input.get(CONF_NO_MOTION_TIMEOUT, DEFAULT_NO_MOTION_TIMEOUT),
+            DEFAULT_NO_MOTION_TIMEOUT,
         )
 
     if FIELD_OPEN_NO_MOTION_TIMEOUT_MINUTES in user_input:
-        open_no_motion_timeout_minutes = int(
-            user_input[FIELD_OPEN_NO_MOTION_TIMEOUT_MINUTES]
+        open_no_motion_timeout_minutes = _bounded_int(
+            user_input[FIELD_OPEN_NO_MOTION_TIMEOUT_MINUTES],
+            int(DEFAULT_OPEN_NO_MOTION_TIMEOUT / 60),
+            MIN_TIMEOUT_MINUTES,
+            MAX_TIMEOUT_MINUTES,
         )
     else:
-        open_no_motion_timeout_minutes = int(
-            int(
-                user_input.get(
-                    CONF_OPEN_NO_MOTION_TIMEOUT,
-                    DEFAULT_OPEN_NO_MOTION_TIMEOUT,
-                )
-            )
-            / 60
+        open_no_motion_timeout_minutes = _bounded_minutes_from_seconds(
+            user_input.get(
+                CONF_OPEN_NO_MOTION_TIMEOUT,
+                DEFAULT_OPEN_NO_MOTION_TIMEOUT,
+            ),
+            DEFAULT_OPEN_NO_MOTION_TIMEOUT,
         )
 
     return {
         "name": str(user_input.get("name", DEFAULT_NAME)).strip() or DEFAULT_NAME,
-        CONF_DOOR_ENTITIES: _as_list(user_input.get(CONF_DOOR_ENTITIES)),
-        CONF_MOTION_ENTITIES: _as_list(user_input.get(CONF_MOTION_ENTITIES)),
-        CONF_DEFAULT_COOLDOWN: int(
-            user_input.get(CONF_DEFAULT_COOLDOWN, DEFAULT_COOLDOWN)
+        CONF_CONTROL_ENTITIES: _entity_ids(
+            user_input.get(CONF_CONTROL_ENTITIES),
+            {"binary_sensor", "switch"},
         ),
-        CONF_FRESH_WINDOW: int(
-            user_input.get(CONF_FRESH_WINDOW, DEFAULT_FRESH_WINDOW)
+        CONF_MOTION_ENTITIES: _entity_ids(
+            user_input.get(CONF_MOTION_ENTITIES),
+            {"binary_sensor"},
+        ),
+        CONF_DEFAULT_COOLDOWN: _bounded_int(
+            user_input.get(CONF_DEFAULT_COOLDOWN, DEFAULT_COOLDOWN),
+            DEFAULT_COOLDOWN,
+            MIN_COOLDOWN,
+            MAX_COOLDOWN,
+        ),
+        CONF_FRESH_WINDOW: _bounded_int(
+            user_input.get(CONF_FRESH_WINDOW, DEFAULT_FRESH_WINDOW),
+            DEFAULT_FRESH_WINDOW,
+            MIN_CONTROL_GRACE_TIME,
+            MAX_CONTROL_GRACE_TIME,
         ),
         CONF_CONTROL_CLOSED_MODE: control_closed_mode,
+        CONF_UNAVAILABLE_BEHAVIOR: unavailable_behavior,
         CONF_NO_MOTION_TIMEOUT: no_motion_timeout_minutes * 60,
         CONF_OPEN_NO_MOTION_TIMEOUT: open_no_motion_timeout_minutes * 60,
     }
@@ -100,24 +182,23 @@ def _normalise_base_input(user_input: dict[str, Any]) -> dict[str, Any]:
 def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     """Return the main configuration schema."""
     defaults = defaults or {}
-    no_motion_timeout_minutes = int(
-        int(defaults.get(CONF_NO_MOTION_TIMEOUT, DEFAULT_NO_MOTION_TIMEOUT)) / 60
+    no_motion_timeout_minutes = _bounded_minutes_from_seconds(
+        defaults.get(CONF_NO_MOTION_TIMEOUT, DEFAULT_NO_MOTION_TIMEOUT),
+        DEFAULT_NO_MOTION_TIMEOUT,
     )
-    open_no_motion_timeout_minutes = int(
-        int(
-            defaults.get(
-                CONF_OPEN_NO_MOTION_TIMEOUT,
-                DEFAULT_OPEN_NO_MOTION_TIMEOUT,
-            )
-        )
-        / 60
+    open_no_motion_timeout_minutes = _bounded_minutes_from_seconds(
+        defaults.get(
+            CONF_OPEN_NO_MOTION_TIMEOUT,
+            DEFAULT_OPEN_NO_MOTION_TIMEOUT,
+        ),
+        DEFAULT_OPEN_NO_MOTION_TIMEOUT,
     )
     return vol.Schema(
         {
             vol.Required("name", default=defaults.get("name", DEFAULT_NAME)): str,
             vol.Required(
-                CONF_DOOR_ENTITIES,
-                default=defaults.get(CONF_DOOR_ENTITIES, []),
+                CONF_CONTROL_ENTITIES,
+                default=defaults.get(CONF_CONTROL_ENTITIES, []),
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain=["binary_sensor", "switch"],
@@ -135,8 +216,8 @@ def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 default=defaults.get(CONF_DEFAULT_COOLDOWN, DEFAULT_COOLDOWN),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=1,
-                    max=3600,
+                    min=MIN_COOLDOWN,
+                    max=MAX_COOLDOWN,
                     step=1,
                     mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="s",
@@ -147,8 +228,8 @@ def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 default=defaults.get(CONF_FRESH_WINDOW, DEFAULT_FRESH_WINDOW),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=0,
-                    max=300,
+                    min=MIN_CONTROL_GRACE_TIME,
+                    max=MAX_CONTROL_GRACE_TIME,
                     step=1,
                     mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="s",
@@ -168,12 +249,25 @@ def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 )
             ),
             vol.Required(
+                CONF_UNAVAILABLE_BEHAVIOR,
+                default=defaults.get(
+                    CONF_UNAVAILABLE_BEHAVIOR,
+                    DEFAULT_UNAVAILABLE_BEHAVIOR,
+                ),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=UNAVAILABLE_BEHAVIOR_CHOICES,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    translation_key=CONF_UNAVAILABLE_BEHAVIOR,
+                )
+            ),
+            vol.Required(
                 FIELD_NO_MOTION_TIMEOUT_MINUTES,
                 default=no_motion_timeout_minutes,
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=0,
-                    max=1440,
+                    min=MIN_TIMEOUT_MINUTES,
+                    max=MAX_TIMEOUT_MINUTES,
                     step=1,
                     mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="min",
@@ -184,8 +278,8 @@ def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 default=open_no_motion_timeout_minutes,
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=0,
-                    max=1440,
+                    min=MIN_TIMEOUT_MINUTES,
+                    max=MAX_TIMEOUT_MINUTES,
                     step=1,
                     mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="min",
@@ -225,8 +319,8 @@ def _cooldown_schema(default_cooldown: int) -> vol.Schema:
                 default=int(default_cooldown),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=1,
-                    max=3600,
+                    min=MIN_COOLDOWN,
+                    max=MAX_COOLDOWN,
                     step=1,
                     mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="s",
@@ -252,23 +346,19 @@ def _entity_current_state(hass: HomeAssistant, entity_id: str) -> str:
     return "not available" if state is None else str(state.state)
 
 
-def _door_placeholders(
+def _control_placeholders(
     hass: HomeAssistant,
-    door_entities: list[str],
-    door_index: int,
+    control_entities: list[str],
+    control_index: int,
 ) -> dict[str, str]:
-    """Return description placeholders for one door setup step."""
-    entity_id = door_entities[door_index]
+    """Return description placeholders for one control setup step."""
+    entity_id = control_entities[control_index]
     display_name = _entity_display_name(hass, entity_id)
     return {
-        "control_number": str(door_index + 1),
-        "control_total": str(len(door_entities)),
+        "control_number": str(control_index + 1),
+        "control_total": str(len(control_entities)),
         "control_name": display_name,
         "control_entity_id": entity_id,
-        "door_number": str(door_index + 1),
-        "door_total": str(len(door_entities)),
-        "door_name": display_name,
-        "door_entity_id": entity_id,
         "current_state": _entity_current_state(hass, entity_id),
     }
 
@@ -297,7 +387,7 @@ class AdvancedPresenceDetectionConfigFlow(config_entries.ConfigFlow, domain=DOMA
     def __init__(self) -> None:
         """Initialize the flow."""
         self._pending_base: dict[str, Any] = {}
-        self._door_index = 0
+        self._control_index = 0
         self._motion_index = 0
 
     @staticmethod
@@ -317,18 +407,18 @@ class AdvancedPresenceDetectionConfigFlow(config_entries.ConfigFlow, domain=DOMA
         if user_input is not None:
             base = _normalise_base_input(user_input)
 
-            if not base[CONF_DOOR_ENTITIES]:
-                errors[CONF_DOOR_ENTITIES] = "no_doors"
+            if not base[CONF_CONTROL_ENTITIES]:
+                errors[CONF_CONTROL_ENTITIES] = "no_controls"
             if not base[CONF_MOTION_ENTITIES]:
                 errors[CONF_MOTION_ENTITIES] = "no_motions"
 
             if not errors:
                 self._pending_base = base
                 self._pending_base[CONF_CONTROL_ACTIVE_STATES] = {
-                    entity_id: STATE_ON for entity_id in base[CONF_DOOR_ENTITIES]
+                    entity_id: STATE_ON for entity_id in base[CONF_CONTROL_ENTITIES]
                 }
-                self._door_index = 0
-                return await self.async_step_door_state()
+                self._control_index = 0
+                return await self.async_step_control_state()
 
         return self.async_show_form(
             step_id="user",
@@ -336,20 +426,20 @@ class AdvancedPresenceDetectionConfigFlow(config_entries.ConfigFlow, domain=DOMA
             errors=errors,
         )
 
-    async def async_step_door_state(
+    async def async_step_control_state(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Ask which state means active for each control entity."""
-        door_entities: list[str] = self._pending_base[CONF_DOOR_ENTITIES]
-        entity_id = door_entities[self._door_index]
+        control_entities: list[str] = self._pending_base[CONF_CONTROL_ENTITIES]
+        entity_id = control_entities[self._control_index]
 
         if user_input is not None:
             self._pending_base[CONF_CONTROL_ACTIVE_STATES][entity_id] = str(
                 user_input[FIELD_CONTROL_ACTIVE_STATE]
             )
-            self._door_index += 1
+            self._control_index += 1
 
-            if self._door_index >= len(door_entities):
+            if self._control_index >= len(control_entities):
                 default_cooldown = self._pending_base[CONF_DEFAULT_COOLDOWN]
                 self._pending_base[CONF_MOTION_COOLDOWNS] = {
                     motion_entity_id: default_cooldown
@@ -358,16 +448,16 @@ class AdvancedPresenceDetectionConfigFlow(config_entries.ConfigFlow, domain=DOMA
                 self._motion_index = 0
                 return await self.async_step_motion_cooldown()
 
-            entity_id = door_entities[self._door_index]
+            entity_id = control_entities[self._control_index]
 
         default_active_state = self._pending_base[CONF_CONTROL_ACTIVE_STATES].get(
             entity_id, STATE_ON
         )
         return self.async_show_form(
-            step_id="door_state",
+            step_id="control_state",
             data_schema=_control_active_state_schema(default_active_state),
-            description_placeholders=_door_placeholders(
-                self.hass, door_entities, self._door_index
+            description_placeholders=_control_placeholders(
+                self.hass, control_entities, self._control_index
             ),
         )
 
@@ -379,8 +469,11 @@ class AdvancedPresenceDetectionConfigFlow(config_entries.ConfigFlow, domain=DOMA
         entity_id = motion_entities[self._motion_index]
 
         if user_input is not None:
-            self._pending_base[CONF_MOTION_COOLDOWNS][entity_id] = int(
-                user_input[FIELD_MOTION_COOLDOWN]
+            self._pending_base[CONF_MOTION_COOLDOWNS][entity_id] = _bounded_int(
+                user_input[FIELD_MOTION_COOLDOWN],
+                self._pending_base[CONF_DEFAULT_COOLDOWN],
+                MIN_COOLDOWN,
+                MAX_COOLDOWN,
             )
             self._motion_index += 1
 
@@ -408,7 +501,7 @@ class AdvancedPresenceDetectionOptionsFlow(config_entries.OptionsFlowWithReload)
     def __init__(self) -> None:
         """Initialize options flow."""
         self._pending_base: dict[str, Any] = {}
-        self._door_index = 0
+        self._control_index = 0
         self._motion_index = 0
 
     def _current_config(self) -> dict[str, Any]:
@@ -425,8 +518,8 @@ class AdvancedPresenceDetectionOptionsFlow(config_entries.OptionsFlowWithReload)
         if user_input is not None:
             base = _normalise_base_input(user_input)
 
-            if not base[CONF_DOOR_ENTITIES]:
-                errors[CONF_DOOR_ENTITIES] = "no_doors"
+            if not base[CONF_CONTROL_ENTITIES]:
+                errors[CONF_CONTROL_ENTITIES] = "no_controls"
             if not base[CONF_MOTION_ENTITIES]:
                 errors[CONF_MOTION_ENTITIES] = "no_motions"
 
@@ -437,10 +530,10 @@ class AdvancedPresenceDetectionOptionsFlow(config_entries.OptionsFlowWithReload)
                 self._pending_base = base
                 self._pending_base[CONF_CONTROL_ACTIVE_STATES] = {
                     entity_id: str(existing_active_states.get(entity_id, STATE_ON))
-                    for entity_id in base[CONF_DOOR_ENTITIES]
+                    for entity_id in base[CONF_CONTROL_ENTITIES]
                 }
-                self._door_index = 0
-                return await self.async_step_door_state()
+                self._control_index = 0
+                return await self.async_step_control_state()
 
         return self.async_show_form(
             step_id="init",
@@ -448,44 +541,49 @@ class AdvancedPresenceDetectionOptionsFlow(config_entries.OptionsFlowWithReload)
             errors=errors,
         )
 
-    async def async_step_door_state(
+    async def async_step_control_state(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage which state means active for each control entity."""
-        door_entities: list[str] = self._pending_base[CONF_DOOR_ENTITIES]
-        entity_id = door_entities[self._door_index]
+        control_entities: list[str] = self._pending_base[CONF_CONTROL_ENTITIES]
+        entity_id = control_entities[self._control_index]
 
         if user_input is not None:
             self._pending_base[CONF_CONTROL_ACTIVE_STATES][entity_id] = str(
                 user_input[FIELD_CONTROL_ACTIVE_STATE]
             )
-            self._door_index += 1
+            self._control_index += 1
 
-            if self._door_index >= len(door_entities):
+            if self._control_index >= len(control_entities):
                 current = self._current_config()
                 existing_cooldowns: dict[str, int] = current.get(
                     CONF_MOTION_COOLDOWNS, {}
                 )
+                if not isinstance(existing_cooldowns, dict):
+                    existing_cooldowns = {}
                 default_cooldown = self._pending_base[CONF_DEFAULT_COOLDOWN]
                 self._pending_base[CONF_MOTION_COOLDOWNS] = {
-                    motion_entity_id: int(
-                        existing_cooldowns.get(motion_entity_id, default_cooldown)
+                    motion_entity_id: _bounded_int(
+                        existing_cooldowns.get(motion_entity_id, default_cooldown),
+                        default_cooldown,
+                        MIN_COOLDOWN,
+                        MAX_COOLDOWN,
                     )
                     for motion_entity_id in self._pending_base[CONF_MOTION_ENTITIES]
                 }
                 self._motion_index = 0
                 return await self.async_step_motion_cooldown()
 
-            entity_id = door_entities[self._door_index]
+            entity_id = control_entities[self._control_index]
 
         default_active_state = self._pending_base[CONF_CONTROL_ACTIVE_STATES].get(
             entity_id, STATE_ON
         )
         return self.async_show_form(
-            step_id="door_state",
+            step_id="control_state",
             data_schema=_control_active_state_schema(default_active_state),
-            description_placeholders=_door_placeholders(
-                self.hass, door_entities, self._door_index
+            description_placeholders=_control_placeholders(
+                self.hass, control_entities, self._control_index
             ),
         )
 
@@ -497,8 +595,11 @@ class AdvancedPresenceDetectionOptionsFlow(config_entries.OptionsFlowWithReload)
         entity_id = motion_entities[self._motion_index]
 
         if user_input is not None:
-            self._pending_base[CONF_MOTION_COOLDOWNS][entity_id] = int(
-                user_input[FIELD_MOTION_COOLDOWN]
+            self._pending_base[CONF_MOTION_COOLDOWNS][entity_id] = _bounded_int(
+                user_input[FIELD_MOTION_COOLDOWN],
+                self._pending_base[CONF_DEFAULT_COOLDOWN],
+                MIN_COOLDOWN,
+                MAX_COOLDOWN,
             )
             self._motion_index += 1
 

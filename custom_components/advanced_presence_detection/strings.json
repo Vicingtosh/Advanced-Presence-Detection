@@ -7,13 +7,14 @@
         "description": "This creates one presence sensor from motion plus one or more control entities. A control can be a door, a TV switch, a helper, or anything else that says presence should be held.",
         "data": {
           "name": "Presence sensor name",
-          "door_entities": "Door or activity controls",
+          "door_entities": "Controls",
           "motion_entities": "Motion sensors",
           "default_cooldown": "Starting motion cooldown in seconds",
-          "fresh_window": "Open/close grace time in seconds",
+          "fresh_window": "Control change grace time in seconds",
           "control_closed_mode": "How many controls must be closed/active?",
+          "unavailable_behavior": "What should happen if a selected source is unavailable?",
           "no_motion_timeout_minutes": "Closed/active no-motion timeout in minutes",
-          "open_no_motion_timeout_minutes": "Open/off no-motion delay in minutes"
+          "open_no_motion_timeout_minutes": "Inactive no-motion delay in minutes"
         },
         "data_description": {
           "name": "The name Home Assistant will show for the new presence sensor.",
@@ -22,11 +23,12 @@
           "default_cooldown": "Seconds. This is the starting value for each motion sensor. You can adjust each one later. The timer starts when the selected controls become closed/active.",
           "fresh_window": "Seconds. After the controls open or become closed/active, keep the presence sensor on no matter what. Use 15 if you are not sure.",
           "control_closed_mode": "Choose All when every selected control must be closed/active before presence can be held. Choose Any when one closed/active control is enough, like a TV being on.",
+          "unavailable_behavior": "Choose whether a missing, unknown, or unavailable selected source should make this presence sensor unavailable, or should simply count as inactive/off.",
           "no_motion_timeout_minutes": "Minutes. When presence is being held while controls are closed/active, turn it off after this many minutes with no motion. Use 60 for one hour. Use 0 to disable this limit.",
           "open_no_motion_timeout_minutes": "Minutes. When the controls are open/off, keep presence on this long after all motion sensors turn off. Use 0 to follow motion immediately."
         }
       },
-      "door_state": {
+      "control_state": {
         "title": "Teach one control",
         "description": "Control {control_number} of {control_total}: **{control_name}** (`{control_entity_id}`).\n\nPut the real thing in the state that should hold presence. Close the door, turn the TV on, start the appliance, or turn the helper on. Home Assistant says this entity is currently `{current_state}`.\n\nChoose the value it shows while it should hold presence.",
         "data": {
@@ -48,7 +50,7 @@
       }
     },
     "error": {
-      "no_doors": "Select at least one door or activity control.",
+      "no_controls": "Select at least one control.",
       "no_motions": "Select at least one motion sensor."
     }
   },
@@ -59,13 +61,14 @@
         "description": "Change the sensors and timing for this room, area, or situation.",
         "data": {
           "name": "Presence sensor name",
-          "door_entities": "Door or activity controls",
+          "door_entities": "Controls",
           "motion_entities": "Motion sensors",
           "default_cooldown": "Starting motion cooldown in seconds",
-          "fresh_window": "Open/close grace time in seconds",
+          "fresh_window": "Control change grace time in seconds",
           "control_closed_mode": "How many controls must be closed/active?",
+          "unavailable_behavior": "What should happen if a selected source is unavailable?",
           "no_motion_timeout_minutes": "Closed/active no-motion timeout in minutes",
-          "open_no_motion_timeout_minutes": "Open/off no-motion delay in minutes"
+          "open_no_motion_timeout_minutes": "Inactive no-motion delay in minutes"
         },
         "data_description": {
           "name": "The name Home Assistant shows for the presence sensor.",
@@ -74,11 +77,12 @@
           "default_cooldown": "Seconds. This is the starting value for newly added motion sensors. Existing sensors keep their saved values unless you change them on the next screens.",
           "fresh_window": "Seconds. After the controls open or become closed/active, keep the presence sensor on no matter what. Use 15 if you are not sure.",
           "control_closed_mode": "Choose All when every selected control must be closed/active before presence can be held. Choose Any when one closed/active control is enough, like a TV being on.",
+          "unavailable_behavior": "Choose whether a missing, unknown, or unavailable selected source should make this presence sensor unavailable, or should simply count as inactive/off.",
           "no_motion_timeout_minutes": "Minutes. When presence is being held while controls are closed/active, turn it off after this many minutes with no motion. Use 60 for one hour. Use 0 to disable this limit.",
           "open_no_motion_timeout_minutes": "Minutes. When the controls are open/off, keep presence on this long after all motion sensors turn off. Use 0 to follow motion immediately."
         }
       },
-      "door_state": {
+      "control_state": {
         "title": "Teach one control",
         "description": "Control {control_number} of {control_total}: **{control_name}** (`{control_entity_id}`).\n\nPut the real thing in the state that should hold presence. Close the door, turn the TV on, start the appliance, or turn the helper on. Home Assistant says this entity is currently `{current_state}`.\n\nChoose the value it shows while it should hold presence.",
         "data": {
@@ -100,7 +104,7 @@
       }
     },
     "error": {
-      "no_doors": "Select at least one door or activity control.",
+      "no_controls": "Select at least one control.",
       "no_motions": "Select at least one motion sensor."
     }
   },
@@ -115,6 +119,12 @@
       "options": {
         "all": "All selected controls must be closed/active",
         "any": "Any selected control can be closed/active"
+      }
+    },
+    "unavailable_behavior": {
+      "options": {
+        "mark_unavailable": "Mark this presence sensor unavailable",
+        "treat_inactive": "Treat unavailable sources as inactive/off"
       }
     }
   }

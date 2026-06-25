@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from random import choice
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
@@ -12,7 +13,13 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
-from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
+from homeassistant.core import (
+    Event,
+    EventStateChangedData,
+    HomeAssistant,
+    State,
+    callback,
+)
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_call_later, async_track_state_change_event
@@ -22,13 +29,14 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_CONTROL_ACTIVE_STATES,
     CONF_CONTROL_CLOSED_MODE,
+    CONF_CONTROL_ENTITIES,
     CONF_DEFAULT_COOLDOWN,
-    CONF_DOOR_ENTITIES,
     CONF_FRESH_WINDOW,
     CONF_MOTION_COOLDOWNS,
     CONF_MOTION_ENTITIES,
     CONF_NO_MOTION_TIMEOUT,
     CONF_OPEN_NO_MOTION_TIMEOUT,
+    CONF_UNAVAILABLE_BEHAVIOR,
     CONTROL_CLOSED_MODE_ALL,
     CONTROL_CLOSED_MODE_ANY,
     DEFAULT_COOLDOWN,
@@ -37,13 +45,80 @@ from .const import (
     DEFAULT_NAME,
     DEFAULT_NO_MOTION_TIMEOUT,
     DEFAULT_OPEN_NO_MOTION_TIMEOUT,
+    DEFAULT_UNAVAILABLE_BEHAVIOR,
     DOMAIN,
+    MAX_CONTROL_GRACE_TIME,
+    MAX_COOLDOWN,
+    MAX_TIMEOUT_SECONDS,
+    MIN_CONTROL_GRACE_TIME,
+    MIN_COOLDOWN,
+    MIN_TIMEOUT_SECONDS,
+    UNAVAILABLE_BEHAVIOR_MARK_UNAVAILABLE,
+    UNAVAILABLE_BEHAVIOR_TREAT_INACTIVE,
 )
 
 UNKNOWN_STATES = {STATE_UNKNOWN, STATE_UNAVAILABLE}
 VALID_ACTIVE_STATES = {"on", "off"}
 VALID_CONTROL_CLOSED_MODES = {CONTROL_CLOSED_MODE_ALL, CONTROL_CLOSED_MODE_ANY}
-VERSION = "0.9.2"
+VALID_UNAVAILABLE_BEHAVIORS = {
+    UNAVAILABLE_BEHAVIOR_MARK_UNAVAILABLE,
+    UNAVAILABLE_BEHAVIOR_TREAT_INACTIVE,
+}
+VERSION = "0.9.3"
+EASTER_EGG_MESSAGES: dict[str, tuple[str, ...]] = {
+    "stillness_mode": (
+        "Presence retained. Someone is probably just very still.",
+        "Still here, just not giving the motion sensor much to work with.",
+        "Presence is holding. The room passed the quiet test.",
+        "No fresh motion, but the room still has a good reason to believe.",
+        "Holding presence. Some rooms are better at patience than motion sensors.",
+    ),
+    "quiet_watch": (
+        "No confirmed presence. Waiting for motion.",
+        "Quiet for now. The next motion event gets the floor.",
+        "No presence latched. The room is standing by.",
+        "Nothing to report yet. Motion gets the final word.",
+        "Presence is off. The sensor is keeping a polite eye on things.",
+    ),
+}
+
+
+def _bounded_int(
+    value: Any,
+    default: int,
+    lower: int,
+    upper: int,
+) -> int:
+    """Return an integer limited to the allowed range."""
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return default
+
+    return max(lower, min(upper, number))
+
+
+def _entity_ids(value: Any, allowed_domains: set[str]) -> list[str]:
+    """Return valid entity ids from stored config data."""
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        candidates = [value]
+    else:
+        try:
+            candidates = list(value)
+        except TypeError:
+            return []
+
+    entity_ids: list[str] = []
+    for candidate in candidates:
+        entity_id = str(candidate)
+        domain, separator, _object_id = entity_id.partition(".")
+        if separator and domain in allowed_domains:
+            entity_ids.append(entity_id)
+
+    return entity_ids
 
 
 async def async_setup_entry(
@@ -67,8 +142,14 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         """Initialize the binary sensor."""
         self._entry = entry
         self._config = {**entry.data, **entry.options}
-        self._doors: list[str] = list(self._config.get(CONF_DOOR_ENTITIES, []))
-        self._motions: list[str] = list(self._config.get(CONF_MOTION_ENTITIES, []))
+        self._controls = _entity_ids(
+            self._config.get(CONF_CONTROL_ENTITIES, []),
+            {"binary_sensor", "switch"},
+        )
+        self._motions = _entity_ids(
+            self._config.get(CONF_MOTION_ENTITIES, []),
+            {"binary_sensor"},
+        )
         self._control_active_states: dict[str, str] = {
             str(entity_id): str(active_state)
             for entity_id, active_state in self._config.get(
@@ -81,36 +162,61 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         )
         if self._control_closed_mode not in VALID_CONTROL_CLOSED_MODES:
             self._control_closed_mode = DEFAULT_CONTROL_CLOSED_MODE
-        self._cooldowns: dict[str, int] = {
-            str(entity_id): int(seconds)
-            for entity_id, seconds in self._config.get(CONF_MOTION_COOLDOWNS, {}).items()
-        }
-        self._default_cooldown = int(
-            self._config.get(CONF_DEFAULT_COOLDOWN, DEFAULT_COOLDOWN)
+        self._unavailable_behavior = str(
+            self._config.get(CONF_UNAVAILABLE_BEHAVIOR, DEFAULT_UNAVAILABLE_BEHAVIOR)
         )
-        self._door_grace_time = int(
-            self._config.get(CONF_FRESH_WINDOW, DEFAULT_FRESH_WINDOW)
+        if self._unavailable_behavior not in VALID_UNAVAILABLE_BEHAVIORS:
+            self._unavailable_behavior = DEFAULT_UNAVAILABLE_BEHAVIOR
+        self._default_cooldown = _bounded_int(
+            self._config.get(CONF_DEFAULT_COOLDOWN, DEFAULT_COOLDOWN),
+            DEFAULT_COOLDOWN,
+            MIN_COOLDOWN,
+            MAX_COOLDOWN,
         )
-        self._no_motion_timeout = int(
-            self._config.get(CONF_NO_MOTION_TIMEOUT, DEFAULT_NO_MOTION_TIMEOUT)
+        self._control_grace_time = _bounded_int(
+            self._config.get(CONF_FRESH_WINDOW, DEFAULT_FRESH_WINDOW),
+            DEFAULT_FRESH_WINDOW,
+            MIN_CONTROL_GRACE_TIME,
+            MAX_CONTROL_GRACE_TIME,
         )
-        self._open_no_motion_timeout = int(
+        self._no_motion_timeout = _bounded_int(
+            self._config.get(CONF_NO_MOTION_TIMEOUT, DEFAULT_NO_MOTION_TIMEOUT),
+            DEFAULT_NO_MOTION_TIMEOUT,
+            MIN_TIMEOUT_SECONDS,
+            MAX_TIMEOUT_SECONDS,
+        )
+        self._open_no_motion_timeout = _bounded_int(
             self._config.get(
                 CONF_OPEN_NO_MOTION_TIMEOUT,
                 DEFAULT_OPEN_NO_MOTION_TIMEOUT,
-            )
+            ),
+            DEFAULT_OPEN_NO_MOTION_TIMEOUT,
+            MIN_TIMEOUT_SECONDS,
+            MAX_TIMEOUT_SECONDS,
         )
+        raw_cooldowns = self._config.get(CONF_MOTION_COOLDOWNS, {})
+        if not isinstance(raw_cooldowns, dict):
+            raw_cooldowns = {}
+        self._cooldowns = {
+            str(entity_id): _bounded_int(
+                seconds,
+                self._default_cooldown,
+                MIN_COOLDOWN,
+                MAX_COOLDOWN,
+            )
+            for entity_id, seconds in raw_cooldowns.items()
+        }
 
         self._is_on: bool | None = False
         self._latched = False
-        self._door_group_open: bool | None = None
+        self._control_group_inactive: bool | None = None
         self._closed_since: datetime | None = None
         self._unsub_callbacks: list[Callable[[], None]] = []
         self._pending_confirmations: dict[str, Callable[[], None]] = {}
-        self._door_grace_unsub: Callable[[], None] | None = None
-        self._door_grace_reason: str | None = None
-        self._door_grace_started_at: datetime | None = None
-        self._door_grace_ends_at: datetime | None = None
+        self._control_grace_unsub: Callable[[], None] | None = None
+        self._control_grace_reason: str | None = None
+        self._control_grace_started_at: datetime | None = None
+        self._control_grace_ends_at: datetime | None = None
         self._no_motion_unsub: Callable[[], None] | None = None
         self._no_motion_started_at: datetime | None = None
         self._no_motion_ends_at: datetime | None = None
@@ -119,6 +225,9 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         self._open_no_motion_ends_at: datetime | None = None
         self._open_no_motion_expired = False
         self._motion_on_since: dict[str, datetime] = {}
+        self._easteregg_current_mode: str | None = None
+        self._easteregg_current_message: str | None = None
+        self._easteregg_last_message_by_mode: dict[str, str] = {}
 
         name = str(self._config.get("name", DEFAULT_NAME))
         self._attr_unique_id = f"{entry.entry_id}_presence"
@@ -134,11 +243,11 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     @property
     def available(self) -> bool:
         """Return if all configured source entities are available."""
-        for entity_id in [*self._doors, *self._motions]:
-            state = self.hass.states.get(entity_id)
-            if state is None or state.state in UNKNOWN_STATES:
-                return False
-        return bool(self._doors and self._motions)
+        if not self._controls or not self._motions:
+            return False
+        if self._treat_unavailable_as_inactive:
+            return True
+        return not self._unavailable_entities()
 
     @property
     def is_on(self) -> bool | None:
@@ -149,31 +258,33 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return debug attributes."""
         now = dt_util.utcnow()
-        door_group_open = self._any_door_open()
-        easteregg_mode = self._easteregg_mode(door_group_open)
-        return {
-            "control_entities": self._doors,
-            "control_states": self._entity_states(self._doors),
+        control_group_inactive = self._control_group_is_inactive()
+        unavailable_entities = self._unavailable_entities()
+        attributes = {
+            "control_entities": self._controls,
+            "control_states": self._entity_states(self._controls),
             "control_active_states": self._effective_control_active_states(),
             "control_evaluations": self._control_evaluations(),
             "control_active_mode": self._control_closed_mode,
-            "control_group_active": not door_group_open,
+            "control_group_active": not control_group_inactive,
             "motion_entities": self._motions,
             "motion_states": self._entity_states(self._motions),
             "motion_cooldowns": self._effective_motion_cooldowns(),
             "motion_evaluations": self._motion_evaluations(now),
             "default_cooldown": self._default_cooldown,
             "closed_since": self._datetime_iso(self._closed_since),
-            "door_grace_time": self._door_grace_time,
-            "door_grace_active": self._door_grace_active,
-            "door_grace_reason": self._door_grace_reason,
-            "door_grace_started_at": self._datetime_iso(self._door_grace_started_at),
-            "door_grace_ends_at": self._datetime_iso(self._door_grace_ends_at),
-            "door_grace_remaining_seconds": self._remaining_seconds(
-                now, self._door_grace_ends_at
+            "control_grace_time": self._control_grace_time,
+            "control_grace_active": self._control_grace_active,
+            "control_grace_reason": self._control_grace_reason,
+            "control_grace_started_at": self._datetime_iso(
+                self._control_grace_started_at
             ),
-            "fresh_window": self._door_grace_time,
-            "fresh_window_active": self._door_grace_active,
+            "control_grace_ends_at": self._datetime_iso(self._control_grace_ends_at),
+            "control_grace_remaining_seconds": self._remaining_seconds(
+                now, self._control_grace_ends_at
+            ),
+            "fresh_window": self._control_grace_time,
+            "fresh_window_active": self._control_grace_active,
             "no_motion_timeout": self._no_motion_timeout,
             "no_motion_timeout_minutes": round(self._no_motion_timeout / 60, 2),
             "no_motion_timer_active": self._no_motion_timer_active,
@@ -197,20 +308,33 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             "open_no_motion_remaining_seconds": self._remaining_seconds(
                 now, self._open_no_motion_ends_at
             ),
-            "control_group": "open_or_off" if door_group_open else "closed_or_active",
+            "control_group": (
+                "open_or_off" if control_group_inactive else "closed_or_active"
+            ),
             "latched": self._latched,
-            "state_reason": self._state_reason(door_group_open),
-            "provisional_on": self._provisional_on(door_group_open),
-            "provisional_reason": self._provisional_reason(door_group_open),
-            "easteregg_mode": easteregg_mode,
-            "easteregg_message": self._easteregg_message(easteregg_mode),
+            "state_reason": self._state_reason(control_group_inactive),
+            "provisional_on": self._provisional_on(control_group_inactive),
+            "provisional_reason": self._provisional_reason(control_group_inactive),
+            "unavailable_behavior": self._unavailable_behavior,
+            "unavailable_entities": unavailable_entities,
+            "unavailable_entity_count": len(unavailable_entities),
             "pending_confirmation_sensors": sorted(self._pending_confirmations),
         }
+        if self._easteregg_current_mode is not None:
+            attributes["easteregg_mode"] = self._easteregg_current_mode
+            attributes["easteregg_message"] = self._easteregg_current_message
+
+        return attributes
 
     @property
-    def _door_grace_active(self) -> bool:
-        """Return true if a door-open or door-close grace timer is active."""
-        return self._door_grace_unsub is not None
+    def _control_grace_active(self) -> bool:
+        """Return true if a control grace timer is active."""
+        return self._control_grace_unsub is not None
+
+    @property
+    def _treat_unavailable_as_inactive(self) -> bool:
+        """Return true when unavailable sources should be ignored as inactive."""
+        return self._unavailable_behavior == UNAVAILABLE_BEHAVIOR_TREAT_INACTIVE
 
     @property
     def _no_motion_timer_active(self) -> bool:
@@ -228,7 +352,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         if last_state is not None and last_state.state in ("on", "off"):
             self._is_on = last_state.state == "on"
 
-        watched_entities = [*self._doors, *self._motions]
+        watched_entities = [*self._controls, *self._motions]
         self._unsub_callbacks.append(
             async_track_state_change_event(
                 self.hass,
@@ -242,7 +366,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     async def async_will_remove_from_hass(self) -> None:
         """Clean up listeners."""
         self._cancel_all_pending_confirmations()
-        self._cancel_door_grace_timer()
+        self._cancel_control_grace_timer()
         self._cancel_no_motion_timer()
         self._cancel_open_no_motion_timer()
         for unsub in self._unsub_callbacks:
@@ -263,47 +387,47 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             self._async_recompute_after_startup_or_reload()
             return
 
-        if entity_id in self._doors:
-            self._async_handle_door_change(entity_id, old_state, new_state)
+        if entity_id in self._controls:
+            self._async_handle_control_change(entity_id, old_state, new_state)
             return
 
         if entity_id in self._motions:
             self._async_handle_motion_change(entity_id, old_state, new_state)
 
     @callback
-    def _async_handle_door_change(
+    def _async_handle_control_change(
         self,
         entity_id: str,
         old_state: State,
         new_state: State,
     ) -> None:
         """Handle a control entity state change."""
-        was_group_open = self._door_group_open
-        is_group_open = self._any_door_open()
+        was_group_inactive = self._control_group_inactive
+        is_group_inactive = self._control_group_is_inactive()
 
-        self._door_group_open = is_group_open
+        self._control_group_inactive = is_group_inactive
 
-        if is_group_open:
+        if is_group_inactive:
             self._closed_since = None
             self._latched = False
             self._cancel_all_pending_confirmations()
             self._cancel_no_motion_timer()
-            if was_group_open is False:
+            if was_group_inactive is False:
                 if self._any_motion_on():
                     self._cancel_open_no_motion_timer()
                 else:
                     self._start_open_no_motion_timer()
-                self._start_door_grace("control_opened_or_not_active")
+                self._start_control_grace("control_opened_or_not_active")
                 return
             self._async_refresh_state()
             return
 
-        if was_group_open is True:
+        if was_group_inactive is True:
             self._closed_since = dt_util.utcnow()
             self._latched = False
             self._cancel_no_motion_timer()
             self._cancel_open_no_motion_timer()
-            self._start_door_grace("control_closed_or_active")
+            self._start_control_grace("control_closed_or_active")
             self._schedule_confirmations_for_current_motion()
             return
 
@@ -319,7 +443,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         """Handle a motion sensor state change."""
         self._update_motion_on_since(entity_id, old_state, new_state)
 
-        if self._any_door_open():
+        if self._control_group_is_inactive():
             self._closed_since = None
             self._latched = False
             self._cancel_pending_confirmation(entity_id)
@@ -350,14 +474,14 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     @callback
     def _async_recompute_after_startup_or_reload(self) -> None:
         """Recompute state after startup or reload."""
-        self._door_group_open = self._any_door_open()
+        self._control_group_inactive = self._control_group_is_inactive()
         self._latched = False
         self._cancel_all_pending_confirmations()
-        self._cancel_door_grace_timer()
+        self._cancel_control_grace_timer()
         self._cancel_no_motion_timer()
         self._cancel_open_no_motion_timer()
 
-        if self._door_group_open:
+        if self._control_group_inactive:
             self._closed_since = None
             if not self._any_motion_on() and self._is_on:
                 self._start_open_no_motion_timer()
@@ -370,14 +494,14 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     @callback
     def _async_refresh_state(self) -> None:
         """Apply the presence rules and write the entity state."""
-        door_group_open = self._any_door_open()
-        self._door_group_open = door_group_open
+        control_group_inactive = self._control_group_is_inactive()
+        self._control_group_inactive = control_group_inactive
 
-        if self._door_grace_active:
+        if self._control_grace_active:
             self._async_set_is_on(True)
             return
 
-        if door_group_open:
+        if control_group_inactive:
             self._closed_since = None
             self._latched = False
             self._cancel_all_pending_confirmations()
@@ -417,13 +541,19 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         """Set the presence state and write attributes."""
         self._is_on = value
         if self.hass is not None:
-            self.async_write_ha_state()
+            self._async_write_ha_state()
+
+    @callback
+    def _async_write_ha_state(self) -> None:
+        """Update derived attributes and write the entity state."""
+        self._update_easteregg_state()
+        self.async_write_ha_state()
 
     def _effective_control_active_states(self) -> dict[str, str]:
         """Return the configured active state for every control entity."""
         return {
             entity_id: self._control_active_states.get(entity_id, STATE_ON)
-            for entity_id in self._doors
+            for entity_id in self._controls
         }
 
     def _effective_motion_cooldowns(self) -> dict[str, int]:
@@ -441,20 +571,39 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             states[entity_id] = None if state is None else state.state
         return states
 
+    def _unavailable_entities(self) -> list[str]:
+        """Return configured source entities that are missing or unavailable."""
+        return [
+            entity_id
+            for entity_id in [*self._controls, *self._motions]
+            if self._entity_is_unavailable(entity_id)
+        ]
+
+    def _entity_is_unavailable(self, entity_id: str) -> bool:
+        """Return true if a source entity is missing, unknown, or unavailable."""
+        state = self.hass.states.get(entity_id)
+        return state is None or state.state in UNKNOWN_STATES
+
     def _control_evaluations(self) -> list[dict[str, Any]]:
         """Return detailed control debug data."""
         evaluations: list[dict[str, Any]] = []
-        for entity_id in self._doors:
+        for entity_id in self._controls:
             state = self.hass.states.get(entity_id)
-            configured_active_state = self._control_active_states.get(entity_id, STATE_ON)
+            configured_active_state = self._control_active_states.get(
+                entity_id, STATE_ON
+            )
             raw_state = None if state is None else state.state
+            is_unavailable = self._entity_is_unavailable(entity_id)
             evaluations.append(
                 {
                     "entity_id": entity_id,
                     "friendly_name": self._friendly_name(entity_id),
                     "raw_state": raw_state,
+                    "is_unavailable_boolean": is_unavailable,
                     "configured_active_state": configured_active_state,
-                    "is_active_boolean": raw_state == configured_active_state,
+                    "is_active_boolean": (
+                        not is_unavailable and raw_state == configured_active_state
+                    ),
                 }
             )
         return evaluations
@@ -467,6 +616,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             state = self.hass.states.get(entity_id)
             raw_state = None if state is None else state.state
             last_changed = None if state is None else state.last_changed
+            is_unavailable = self._entity_is_unavailable(entity_id)
             motion_on_since = self._motion_on_since.get(entity_id)
             cooldown = self._cooldown_for(entity_id)
             state_age = self._age_seconds(now, last_changed)
@@ -474,7 +624,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             if (
                 raw_state == STATE_ON
                 and self._closed_since is not None
-                and not self._any_door_open()
+                and not self._control_group_is_inactive()
             ):
                 closed_age = (now - self._closed_since).total_seconds()
                 cooldown_remaining = max(0.0, round(cooldown - closed_age, 1))
@@ -485,6 +635,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
                     "friendly_name": self._friendly_name(entity_id),
                     "raw_state": raw_state,
                     "last_changed": self._datetime_iso(last_changed),
+                    "is_unavailable_boolean": is_unavailable,
                     "age_seconds": state_age,
                     "motion_on_since": self._datetime_iso(motion_on_since),
                     "motion_on_age_seconds": self._age_seconds(now, motion_on_since),
@@ -529,18 +680,18 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             return None
         return max(0.0, round((ends_at - now).total_seconds(), 1))
 
-    def _any_door_open(self) -> bool:
+    def _control_group_is_inactive(self) -> bool:
         """Return true if the control group is open or not active."""
         return not self._control_group_closed()
 
     def _control_group_closed(self) -> bool:
         """Return true if the control group is closed or active."""
-        if not self._doors:
+        if not self._controls:
             return False
 
         active_states = [
-            self._door_is_open(entity_id)
-            for entity_id in self._doors
+            self._control_is_active(entity_id)
+            for entity_id in self._controls
         ]
 
         if self._control_closed_mode == CONTROL_CLOSED_MODE_ANY:
@@ -548,14 +699,14 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
 
         return all(active_states)
 
-    def _door_is_open(self, entity_id: str) -> bool:
+    def _control_is_active(self, entity_id: str) -> bool:
         """Return true if one control entity is in its active state."""
         state = self.hass.states.get(entity_id)
-        if state is None:
+        if state is None or state.state in UNKNOWN_STATES:
             return False
-        return self._state_is_door_open(entity_id, state)
+        return self._state_is_control_active(entity_id, state)
 
-    def _state_is_door_open(self, entity_id: str, state: State) -> bool:
+    def _state_is_control_active(self, entity_id: str, state: State) -> bool:
         """Return true if a state is the configured active state."""
         active_state = self._control_active_states.get(entity_id, STATE_ON)
         return state.state == active_state
@@ -567,20 +718,24 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     def _motion_is_on(self, entity_id: str) -> bool:
         """Return true if a motion sensor is on."""
         state = self.hass.states.get(entity_id)
-        return state is not None and state.state == STATE_ON
+        return (
+            state is not None
+            and state.state not in UNKNOWN_STATES
+            and state.state == STATE_ON
+        )
 
     def _cooldown_for(self, entity_id: str) -> int:
         """Return the cooldown for a motion sensor."""
         return int(self._cooldowns.get(entity_id, self._default_cooldown))
 
-    def _state_reason(self, door_group_open: bool | None = None) -> str:
+    def _state_reason(self, control_group_inactive: bool | None = None) -> str:
         """Return why the presence sensor currently has its state."""
-        if door_group_open is None:
-            door_group_open = self._any_door_open()
+        if control_group_inactive is None:
+            control_group_inactive = self._control_group_is_inactive()
 
-        if self._door_grace_active:
-            return self._door_grace_reason or "control_grace"
-        if door_group_open:
+        if self._control_grace_active:
+            return self._control_grace_reason or "control_grace"
+        if control_group_inactive:
             if self._any_motion_on():
                 return "open_or_not_active_following_motion"
             if self._open_no_motion_timer_active:
@@ -594,23 +749,29 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             return "motion_on_waiting_for_active_control_cooldown"
         return "closed_or_active_no_motion"
 
-    def _provisional_on(self, door_group_open: bool | None = None) -> bool:
+    def _provisional_on(self, control_group_inactive: bool | None = None) -> bool:
         """Return true if presence is on without a closed-or-active latch."""
-        if door_group_open is None:
-            door_group_open = self._any_door_open()
+        if control_group_inactive is None:
+            control_group_inactive = self._control_group_is_inactive()
         return bool(self._is_on and not self._latched)
 
-    def _provisional_reason(self, door_group_open: bool | None = None) -> str | None:
+    def _provisional_reason(
+        self,
+        control_group_inactive: bool | None = None,
+    ) -> str | None:
         """Return why presence is on without being latched."""
-        if not self._provisional_on(door_group_open):
+        if not self._provisional_on(control_group_inactive):
             return None
-        return self._state_reason(door_group_open)
+        return self._state_reason(control_group_inactive)
 
-    def _easteregg_mode(self, door_group_open: bool | None = None) -> str | None:
+    def _easteregg_mode(
+        self,
+        control_group_inactive: bool | None = None,
+    ) -> str | None:
         """Return a harmless easter egg label for quiet states."""
-        if door_group_open is None:
-            door_group_open = self._any_door_open()
-        if self._door_grace_active or self._any_motion_on():
+        if control_group_inactive is None:
+            control_group_inactive = self._control_group_is_inactive()
+        if self._control_grace_active or self._any_motion_on():
             return None
         if self._latched and self._is_on:
             return "stillness_mode"
@@ -618,14 +779,31 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             return "quiet_watch"
         return None
 
-    @staticmethod
-    def _easteregg_message(mode: str | None) -> str | None:
-        """Return a harmless easter egg message."""
-        if mode == "stillness_mode":
-            return "Presence retained. Someone is probably just very still."
-        if mode == "quiet_watch":
-            return "No confirmed presence. Waiting for motion."
-        return None
+    def _update_easteregg_state(self) -> None:
+        """Pick a stable easter egg message when the easter egg mode changes."""
+        mode = self._easteregg_mode()
+        if mode is None:
+            self._easteregg_current_mode = None
+            self._easteregg_current_message = None
+            return
+
+        if mode == self._easteregg_current_mode and self._easteregg_current_message:
+            return
+
+        self._easteregg_current_mode = mode
+        self._easteregg_current_message = self._select_easteregg_message(mode)
+
+    def _select_easteregg_message(self, mode: str) -> str | None:
+        """Return a harmless easter egg message without repeating the last one."""
+        messages = EASTER_EGG_MESSAGES.get(mode)
+        if not messages:
+            return None
+
+        last_message = self._easteregg_last_message_by_mode.get(mode)
+        choices = [message for message in messages if message != last_message]
+        message = choice(choices or list(messages))
+        self._easteregg_last_message_by_mode[mode] = message
+        return message
 
     @callback
     def _update_motion_on_since(
@@ -652,7 +830,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     @callback
     def _schedule_motion_confirmation(self, entity_id: str) -> None:
         """Schedule confirmation after the control-active cooldown has elapsed."""
-        if self._latched or self._any_door_open():
+        if self._latched or self._control_group_is_inactive():
             self._cancel_pending_confirmation(entity_id)
             return
 
@@ -680,7 +858,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             delay,
             lambda now: self._async_confirm_motion_after_cooldown(entity_id, now),
         )
-        self.async_write_ha_state()
+        self._async_write_ha_state()
 
     @callback
     def _async_confirm_motion_after_cooldown(
@@ -691,7 +869,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         """Latch presence if motion is still on after its cooldown."""
         self._pending_confirmations.pop(entity_id, None)
 
-        if self._any_door_open():
+        if self._control_group_is_inactive():
             self._async_refresh_state()
             return
 
@@ -705,22 +883,22 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         self._async_refresh_state()
 
     @callback
-    def _start_door_grace(self, reason: str) -> None:
+    def _start_control_grace(self, reason: str) -> None:
         """Keep presence on for the configured control grace time."""
-        self._cancel_door_grace_timer()
+        self._cancel_control_grace_timer()
 
-        if self._door_grace_time <= 0:
+        if self._control_grace_time <= 0:
             self._async_refresh_state()
             return
 
         now = dt_util.utcnow()
-        self._door_grace_reason = reason
-        self._door_grace_started_at = now
-        self._door_grace_ends_at = now + timedelta(seconds=self._door_grace_time)
-        self._door_grace_unsub = async_call_later(
+        self._control_grace_reason = reason
+        self._control_grace_started_at = now
+        self._control_grace_ends_at = now + timedelta(seconds=self._control_grace_time)
+        self._control_grace_unsub = async_call_later(
             self.hass,
-            self._door_grace_time,
-            self._async_end_door_grace,
+            self._control_grace_time,
+            self._async_end_control_grace,
         )
         self._async_set_is_on(True)
 
@@ -738,7 +916,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             self._no_motion_timeout,
             self._async_no_motion_timeout,
         )
-        self.async_write_ha_state()
+        self._async_write_ha_state()
 
     @callback
     def _start_open_no_motion_timer(self) -> None:
@@ -746,7 +924,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         if (
             self._open_no_motion_timeout <= 0
             or self._open_no_motion_unsub is not None
-            or not self._any_door_open()
+            or not self._control_group_is_inactive()
             or self._any_motion_on()
         ):
             return
@@ -762,7 +940,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             self._open_no_motion_timeout,
             self._async_open_no_motion_timeout,
         )
-        self.async_write_ha_state()
+        self._async_write_ha_state()
 
     @callback
     def _async_no_motion_timeout(self, now: datetime | None = None) -> None:
@@ -771,7 +949,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         self._no_motion_started_at = None
         self._no_motion_ends_at = None
 
-        if self._any_door_open() or self._any_motion_on():
+        if self._control_group_is_inactive() or self._any_motion_on():
             self._async_refresh_state()
             return
 
@@ -786,8 +964,12 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         self._open_no_motion_started_at = None
         self._open_no_motion_ends_at = None
 
-        if self._door_grace_active or not self._any_door_open() or self._any_motion_on():
-            if self._any_door_open() and not self._any_motion_on():
+        if (
+            self._control_grace_active
+            or not self._control_group_is_inactive()
+            or self._any_motion_on()
+        ):
+            if self._control_group_is_inactive() and not self._any_motion_on():
                 self._open_no_motion_expired = True
             self._async_refresh_state()
             return
@@ -796,12 +978,12 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         self._async_set_is_on(False)
 
     @callback
-    def _async_end_door_grace(self, now: datetime | None = None) -> None:
-        """End the door grace window and apply normal rules."""
-        self._door_grace_unsub = None
-        self._door_grace_reason = None
-        self._door_grace_started_at = None
-        self._door_grace_ends_at = None
+    def _async_end_control_grace(self, now: datetime | None = None) -> None:
+        """End the control grace window and apply normal rules."""
+        self._control_grace_unsub = None
+        self._control_grace_reason = None
+        self._control_grace_started_at = None
+        self._control_grace_ends_at = None
         self._async_refresh_state()
 
     @callback
@@ -819,14 +1001,14 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         self._pending_confirmations.clear()
 
     @callback
-    def _cancel_door_grace_timer(self) -> None:
-        """Cancel the door grace timer."""
-        if self._door_grace_unsub is not None:
-            self._door_grace_unsub()
-            self._door_grace_unsub = None
-        self._door_grace_reason = None
-        self._door_grace_started_at = None
-        self._door_grace_ends_at = None
+    def _cancel_control_grace_timer(self) -> None:
+        """Cancel the control grace timer."""
+        if self._control_grace_unsub is not None:
+            self._control_grace_unsub()
+            self._control_grace_unsub = None
+        self._control_grace_reason = None
+        self._control_grace_started_at = None
+        self._control_grace_ends_at = None
 
     @callback
     def _cancel_no_motion_timer(self) -> None:
