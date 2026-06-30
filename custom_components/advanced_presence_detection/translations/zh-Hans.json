@@ -1,0 +1,135 @@
+{
+  "title": "Advanced Presence Detection",
+  "config": {
+    "step": {
+      "user": {
+        "title": "创建存在传感器",
+        "description": "这会根据运动以及一个或多个控制实体创建一个存在传感器。控制实体可以是门、电视开关、助手，或任何表示应保持存在状态的东西。",
+        "data": {
+          "name": "存在传感器名称",
+          "door_entities": "控制实体",
+          "motion_entities": "运动传感器",
+          "default_cooldown": "初始运动 cooldown（秒）",
+          "fresh_window": "控制变化宽限时间（秒）",
+          "control_closed_mode": "需要多少控制实体处于关闭/活动状态？",
+          "unavailable_behavior": "如果选定来源不可用，应如何处理？",
+          "show_debug_attributes": "显示调试属性",
+          "no_motion_timeout_minutes": "关闭/活动时无运动超时（分钟）",
+          "open_no_motion_timeout_minutes": "非活动时无运动延迟（分钟）"
+        },
+        "data_description": {
+          "name": "Home Assistant 将为新的存在传感器显示的名称。",
+          "door_entities": "选择每个应保持存在状态的 binary sensor、switch、input boolean 或 fan。例如：关闭的门、打开的电视、正在运行的电器、助手或风扇。",
+          "motion_entities": "选择每个能在此房间或区域检测到运动的运动传感器。",
+          "default_cooldown": "秒。这是每个运动传感器的初始值。之后可以单独调整。计时器会在选定控制实体变为关闭/活动时开始。",
+          "fresh_window": "秒。在控制实体打开或变为关闭/活动之后，无论如何都让存在传感器保持开启。如果不确定，请使用 15。",
+          "control_closed_mode": "选择全部，表示所有选定控制实体都必须关闭/活动后才能保持存在。选择任意，表示一个关闭/活动的控制实体就足够，例如电视打开。",
+          "unavailable_behavior": "选择缺失、未知或不可用的来源是让此存在传感器变为不可用，还是只按非活动/关闭计算。",
+          "show_debug_attributes": "默认关闭。仅在排查问题时启用，以显示详细来源状态、评估、计时器、cooldown 和待确认项。",
+          "no_motion_timeout_minutes": "分钟。当控制实体关闭/活动并正在保持存在时，在没有运动这么多分钟后关闭。60 表示一小时。0 表示禁用此限制。",
+          "open_no_motion_timeout_minutes": "分钟。当控制实体打开/关闭时，在所有运动传感器关闭后继续保持存在这么久。使用 0 表示立即跟随运动。"
+        }
+      },
+      "control_state": {
+        "title": "设置一个控制实体",
+        "description": "控制实体 {control_number}/{control_total}：**{control_name}** (`{control_entity_id}`)。\n\n请把实际设备置于应保持存在的状态。关门、打开电视、启动电器或打开助手。Home Assistant 当前显示此实体为 `{current_state}`。\n\n请选择它在应保持存在时显示的值。",
+        "data": {
+          "control_active_state": "哪个值表示关闭/活动？"
+        },
+        "data_description": {
+          "control_active_state": "如果实体在应保持存在时显示 on，请选择 On。如果显示 off，请选择 Off。"
+        }
+      },
+      "motion_cooldown": {
+        "title": "设置一个运动传感器",
+        "description": "运动传感器 {motion_number}/{motion_total}：**{motion_name}** (`{motion_entity_id}`)。\n\n请输入在控制实体变为关闭/活动之后，此传感器必须继续显示 `on` 多久，才确认存在。它现在显示 `{current_state}`。\n\n例如：如果你希望关门 3 分钟后它仍然开启，请输入 `180`。",
+        "data": {
+          "motion_cooldown": "Cooldown 秒数"
+        },
+        "data_description": {
+          "motion_cooldown": "控制实体变为关闭/活动后，此运动传感器必须继续开启的秒数。"
+        }
+      }
+    },
+    "error": {
+      "no_controls": "请至少选择一个控制实体。",
+      "no_motions": "请至少选择一个运动传感器。"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "更新存在传感器",
+        "description": "更改此房间、区域或场景的传感器和时间设置。",
+        "data": {
+          "name": "存在传感器名称",
+          "door_entities": "控制实体",
+          "motion_entities": "运动传感器",
+          "default_cooldown": "初始运动 cooldown（秒）",
+          "fresh_window": "控制变化宽限时间（秒）",
+          "control_closed_mode": "需要多少控制实体处于关闭/活动状态？",
+          "unavailable_behavior": "如果选定来源不可用，应如何处理？",
+          "show_debug_attributes": "显示调试属性",
+          "no_motion_timeout_minutes": "关闭/活动时无运动超时（分钟）",
+          "open_no_motion_timeout_minutes": "非活动时无运动延迟（分钟）"
+        },
+        "data_description": {
+          "name": "Home Assistant 为此存在传感器显示的名称。",
+          "door_entities": "选择每个应保持存在状态的 binary sensor、switch、input boolean 或 fan。例如：关闭的门、打开的电视、正在运行的电器、助手或风扇。",
+          "motion_entities": "选择每个能在此房间或区域检测到运动的运动传感器。",
+          "default_cooldown": "秒。这是新添加运动传感器的初始值。现有传感器会保留已保存的值，除非你在后续页面更改它们。",
+          "fresh_window": "秒。在控制实体打开或变为关闭/活动之后，无论如何都让存在传感器保持开启。如果不确定，请使用 15。",
+          "control_closed_mode": "选择全部，表示所有选定控制实体都必须关闭/活动后才能保持存在。选择任意，表示一个关闭/活动的控制实体就足够，例如电视打开。",
+          "unavailable_behavior": "选择缺失、未知或不可用的来源是让此存在传感器变为不可用，还是只按非活动/关闭计算。",
+          "show_debug_attributes": "默认关闭。仅在排查问题时启用，以显示详细来源状态、评估、计时器、cooldown 和待确认项。",
+          "no_motion_timeout_minutes": "分钟。当控制实体关闭/活动并正在保持存在时，在没有运动这么多分钟后关闭。60 表示一小时。0 表示禁用此限制。",
+          "open_no_motion_timeout_minutes": "分钟。当控制实体打开/关闭时，在所有运动传感器关闭后继续保持存在这么久。使用 0 表示立即跟随运动。"
+        }
+      },
+      "control_state": {
+        "title": "设置一个控制实体",
+        "description": "控制实体 {control_number}/{control_total}：**{control_name}** (`{control_entity_id}`)。\n\n请把实际设备置于应保持存在的状态。关门、打开电视、启动电器或打开助手。Home Assistant 当前显示此实体为 `{current_state}`。\n\n请选择它在应保持存在时显示的值。",
+        "data": {
+          "control_active_state": "哪个值表示关闭/活动？"
+        },
+        "data_description": {
+          "control_active_state": "如果实体在应保持存在时显示 on，请选择 On。如果显示 off，请选择 Off。"
+        }
+      },
+      "motion_cooldown": {
+        "title": "设置一个运动传感器",
+        "description": "运动传感器 {motion_number}/{motion_total}：**{motion_name}** (`{motion_entity_id}`)。\n\n请输入在控制实体变为关闭/活动之后，此传感器必须继续显示 `on` 多久，才确认存在。它现在显示 `{current_state}`。\n\n例如：如果你希望关门 3 分钟后它仍然开启，请输入 `180`。",
+        "data": {
+          "motion_cooldown": "Cooldown 秒数"
+        },
+        "data_description": {
+          "motion_cooldown": "控制实体变为关闭/活动后，此运动传感器必须继续开启的秒数。"
+        }
+      }
+    },
+    "error": {
+      "no_controls": "请至少选择一个控制实体。",
+      "no_motions": "请至少选择一个运动传感器。"
+    }
+  },
+  "selector": {
+    "control_active_state": {
+      "options": {
+        "on": "On 表示关闭/活动",
+        "off": "Off 表示关闭/活动"
+      }
+    },
+    "control_closed_mode": {
+      "options": {
+        "all": "所有选定控制实体都必须关闭/活动",
+        "any": "任意一个选定控制实体可以关闭/活动"
+      }
+    },
+    "unavailable_behavior": {
+      "options": {
+        "mark_unavailable": "将此存在传感器标记为不可用",
+        "treat_inactive": "将不可用来源视为非活动/关闭"
+      }
+    }
+  }
+}

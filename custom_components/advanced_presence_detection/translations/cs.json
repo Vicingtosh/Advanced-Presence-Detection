@@ -1,0 +1,135 @@
+{
+  "title": "Advanced Presence Detection",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Vytvořit senzor přítomnosti",
+        "description": "Tím se vytvoří jeden senzor přítomnosti z pohybu a jedné nebo více řídicích entit. Řízení může být dveře, vypínač TV, pomocník nebo cokoli jiného, co říká, že přítomnost má zůstat udržena.",
+        "data": {
+          "name": "Název senzoru přítomnosti",
+          "door_entities": "Řízení",
+          "motion_entities": "Senzory pohybu",
+          "default_cooldown": "Počáteční cooldown pohybu v sekundách",
+          "fresh_window": "Ochranný čas po změně řízení v sekundách",
+          "control_closed_mode": "Kolik řízení musí být zavřených/aktivních?",
+          "unavailable_behavior": "Co se má stát, když je vybraný zdroj nedostupný?",
+          "show_debug_attributes": "Zobrazit ladicí atributy",
+          "no_motion_timeout_minutes": "Limit bez pohybu při zavřeno/aktivní v minutách",
+          "open_no_motion_timeout_minutes": "Zpoždění bez pohybu při neaktivním stavu v minutách"
+        },
+        "data_description": {
+          "name": "Název, který Home Assistant zobrazí pro nový senzor přítomnosti.",
+          "door_entities": "Vyberte každý binary sensor, switch, input boolean nebo fan, který má udržovat přítomnost. Příklady: zavřené dveře, zapnutá TV, běžící spotřebič, pomocník nebo ventilátor.",
+          "motion_entities": "Vyberte každý senzor pohybu, který může vidět pohyb v této místnosti nebo oblasti.",
+          "default_cooldown": "Sekundy. Toto je počáteční hodnota pro každý senzor pohybu. Každý můžete později upravit. Časovač začne, když se vybraná řízení stanou zavřenými/aktivními.",
+          "fresh_window": "Sekundy. Poté, co se řízení otevřou nebo stanou zavřenými/aktivními, ponechte senzor přítomnosti zapnutý bez ohledu na vše ostatní. Pokud si nejste jistí, použijte 15.",
+          "control_closed_mode": "Vyberte Všechna, když musí být všechna vybraná řízení zavřená/aktivní, aby bylo možné přítomnost udržet. Vyberte Libovolné, když stačí jedno zavřené/aktivní řízení, například zapnutá TV.",
+          "unavailable_behavior": "Vyberte, zda má chybějící, neznámý nebo nedostupný zdroj označit tento senzor přítomnosti jako nedostupný, nebo se má prostě počítat jako neaktivní/vypnutý.",
+          "show_debug_attributes": "Ve výchozím nastavení vypnuto. Zapněte pouze při řešení problémů, aby se zobrazily podrobné stavy zdrojů, vyhodnocení, časovače, cooldowny a čekající potvrzení.",
+          "no_motion_timeout_minutes": "Minuty. Když se přítomnost udržuje, zatímco jsou řízení zavřená/aktivní, vypnout po tolika minutách bez pohybu. Použijte 60 pro jednu hodinu. Použijte 0 pro vypnutí tohoto limitu.",
+          "open_no_motion_timeout_minutes": "Minuty. Když jsou řízení otevřená/vypnutá, udržujte přítomnost po tuto dobu poté, co se všechny senzory pohybu vypnou. Použijte 0 pro okamžité sledování pohybu."
+        }
+      },
+      "control_state": {
+        "title": "Nastavit jedno řízení",
+        "description": "Řízení {control_number} z {control_total}: **{control_name}** (`{control_entity_id}`).\n\nUveďte skutečnou věc do stavu, který má udržovat přítomnost. Zavřete dveře, zapněte TV, spusťte spotřebič nebo zapněte pomocníka. Home Assistant říká, že tato entita je právě `{current_state}`.\n\nVyberte hodnotu, kterou ukazuje, když má udržovat přítomnost.",
+        "data": {
+          "control_active_state": "Která hodnota znamená zavřeno/aktivní?"
+        },
+        "data_description": {
+          "control_active_state": "Vyberte On, pokud entita říká on, když má udržovat přítomnost. Vyberte Off, pokud říká off, když má udržovat přítomnost."
+        }
+      },
+      "motion_cooldown": {
+        "title": "Nastavit jeden senzor pohybu",
+        "description": "Senzor pohybu {motion_number} z {motion_total}: **{motion_name}** (`{motion_entity_id}`).\n\nZadejte, jak dlouho musí tento senzor stále říkat `on` poté, co se řízení stanou zavřenými/aktivními, než bude přítomnost potvrzena. Teď říká `{current_state}`.\n\nPříklad: pokud má být stále zapnutý 3 minuty po zavření dveří, zadejte `180`.",
+        "data": {
+          "motion_cooldown": "Cooldown v sekundách"
+        },
+        "data_description": {
+          "motion_cooldown": "Kolik sekund musí tento senzor pohybu stále zůstat zapnutý poté, co se řízení stanou zavřenými/aktivními."
+        }
+      }
+    },
+    "error": {
+      "no_controls": "Vyberte alespoň jedno řízení.",
+      "no_motions": "Vyberte alespoň jeden senzor pohybu."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aktualizovat senzor přítomnosti",
+        "description": "Změňte senzory a časy pro tuto místnost, oblast nebo situaci.",
+        "data": {
+          "name": "Název senzoru přítomnosti",
+          "door_entities": "Řízení",
+          "motion_entities": "Senzory pohybu",
+          "default_cooldown": "Počáteční cooldown pohybu v sekundách",
+          "fresh_window": "Ochranný čas po změně řízení v sekundách",
+          "control_closed_mode": "Kolik řízení musí být zavřených/aktivních?",
+          "unavailable_behavior": "Co se má stát, když je vybraný zdroj nedostupný?",
+          "show_debug_attributes": "Zobrazit ladicí atributy",
+          "no_motion_timeout_minutes": "Limit bez pohybu při zavřeno/aktivní v minutách",
+          "open_no_motion_timeout_minutes": "Zpoždění bez pohybu při neaktivním stavu v minutách"
+        },
+        "data_description": {
+          "name": "Název, který Home Assistant zobrazuje pro senzor přítomnosti.",
+          "door_entities": "Vyberte každý binary sensor, switch, input boolean nebo fan, který má udržovat přítomnost. Příklady: zavřené dveře, zapnutá TV, běžící spotřebič, pomocník nebo ventilátor.",
+          "motion_entities": "Vyberte každý senzor pohybu, který může vidět pohyb v této místnosti nebo oblasti.",
+          "default_cooldown": "Sekundy. Toto je počáteční hodnota pro nově přidané senzory pohybu. Existující senzory si ponechají uložené hodnoty, pokud je nezměníte na dalších obrazovkách.",
+          "fresh_window": "Sekundy. Poté, co se řízení otevřou nebo stanou zavřenými/aktivními, ponechte senzor přítomnosti zapnutý bez ohledu na vše ostatní. Pokud si nejste jistí, použijte 15.",
+          "control_closed_mode": "Vyberte Všechna, když musí být všechna vybraná řízení zavřená/aktivní, aby bylo možné přítomnost udržet. Vyberte Libovolné, když stačí jedno zavřené/aktivní řízení, například zapnutá TV.",
+          "unavailable_behavior": "Vyberte, zda má chybějící, neznámý nebo nedostupný zdroj označit tento senzor přítomnosti jako nedostupný, nebo se má prostě počítat jako neaktivní/vypnutý.",
+          "show_debug_attributes": "Ve výchozím nastavení vypnuto. Zapněte pouze při řešení problémů, aby se zobrazily podrobné stavy zdrojů, vyhodnocení, časovače, cooldowny a čekající potvrzení.",
+          "no_motion_timeout_minutes": "Minuty. Když se přítomnost udržuje, zatímco jsou řízení zavřená/aktivní, vypnout po tolika minutách bez pohybu. Použijte 60 pro jednu hodinu. Použijte 0 pro vypnutí tohoto limitu.",
+          "open_no_motion_timeout_minutes": "Minuty. Když jsou řízení otevřená/vypnutá, udržujte přítomnost po tuto dobu poté, co se všechny senzory pohybu vypnou. Použijte 0 pro okamžité sledování pohybu."
+        }
+      },
+      "control_state": {
+        "title": "Nastavit jedno řízení",
+        "description": "Řízení {control_number} z {control_total}: **{control_name}** (`{control_entity_id}`).\n\nUveďte skutečnou věc do stavu, který má udržovat přítomnost. Zavřete dveře, zapněte TV, spusťte spotřebič nebo zapněte pomocníka. Home Assistant říká, že tato entita je právě `{current_state}`.\n\nVyberte hodnotu, kterou ukazuje, když má udržovat přítomnost.",
+        "data": {
+          "control_active_state": "Která hodnota znamená zavřeno/aktivní?"
+        },
+        "data_description": {
+          "control_active_state": "Vyberte On, pokud entita říká on, když má udržovat přítomnost. Vyberte Off, pokud říká off, když má udržovat přítomnost."
+        }
+      },
+      "motion_cooldown": {
+        "title": "Nastavit jeden senzor pohybu",
+        "description": "Senzor pohybu {motion_number} z {motion_total}: **{motion_name}** (`{motion_entity_id}`).\n\nZadejte, jak dlouho musí tento senzor stále říkat `on` poté, co se řízení stanou zavřenými/aktivními, než bude přítomnost potvrzena. Teď říká `{current_state}`.\n\nPříklad: pokud má být stále zapnutý 3 minuty po zavření dveří, zadejte `180`.",
+        "data": {
+          "motion_cooldown": "Cooldown v sekundách"
+        },
+        "data_description": {
+          "motion_cooldown": "Kolik sekund musí tento senzor pohybu stále zůstat zapnutý poté, co se řízení stanou zavřenými/aktivními."
+        }
+      }
+    },
+    "error": {
+      "no_controls": "Vyberte alespoň jedno řízení.",
+      "no_motions": "Vyberte alespoň jeden senzor pohybu."
+    }
+  },
+  "selector": {
+    "control_active_state": {
+      "options": {
+        "on": "On znamená zavřeno/aktivní",
+        "off": "Off znamená zavřeno/aktivní"
+      }
+    },
+    "control_closed_mode": {
+      "options": {
+        "all": "Všechna vybraná řízení musí být zavřená/aktivní",
+        "any": "Libovolné vybrané řízení může být zavřené/aktivní"
+      }
+    },
+    "unavailable_behavior": {
+      "options": {
+        "mark_unavailable": "Označit tento senzor přítomnosti jako nedostupný",
+        "treat_inactive": "Považovat nedostupné zdroje za neaktivní/vypnuté"
+      }
+    }
+  }
+}

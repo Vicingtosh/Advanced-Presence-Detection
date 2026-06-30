@@ -1,0 +1,135 @@
+{
+  "title": "Advanced Presence Detection",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Utwórz czujnik obecności",
+        "description": "To tworzy jeden czujnik obecności na podstawie ruchu oraz jednej lub kilku encji sterujących. Sterowaniem może być drzwi, przełącznik TV, pomocnik lub cokolwiek innego, co mówi, że obecność powinna zostać podtrzymana.",
+        "data": {
+          "name": "Nazwa czujnika obecności",
+          "door_entities": "Sterowania",
+          "motion_entities": "Czujniki ruchu",
+          "default_cooldown": "Początkowy cooldown ruchu w sekundach",
+          "fresh_window": "Czas ochronny po zmianie sterowania w sekundach",
+          "control_closed_mode": "Ile sterowań musi być zamkniętych/aktywnych?",
+          "unavailable_behavior": "Co zrobić, gdy wybrane źródło jest niedostępne?",
+          "show_debug_attributes": "Pokaż atrybuty debugowania",
+          "no_motion_timeout_minutes": "Limit bez ruchu przy zamknięciu/aktywności w minutach",
+          "open_no_motion_timeout_minutes": "Opóźnienie bez ruchu przy nieaktywności w minutach"
+        },
+        "data_description": {
+          "name": "Nazwa, którą Home Assistant pokaże dla nowego czujnika obecności.",
+          "door_entities": "Wybierz każdy binary sensor, switch, input boolean lub fan, który ma podtrzymywać obecność. Przykłady: zamknięte drzwi, włączony telewizor, działające urządzenie, pomocnik albo wentylator.",
+          "motion_entities": "Wybierz każdy czujnik ruchu, który może wykrywać ruch w tym pokoju lub obszarze.",
+          "default_cooldown": "Sekundy. To wartość początkowa dla każdego czujnika ruchu. Każdy z nich można później dostosować. Timer startuje, gdy wybrane sterowania stają się zamknięte/aktywne.",
+          "fresh_window": "Sekundy. Po otwarciu sterowań albo po tym, jak staną się zamknięte/aktywne, czujnik obecności pozostaje włączony bez względu na wszystko. Użyj 15, jeśli nie masz pewności.",
+          "control_closed_mode": "Wybierz Wszystkie, gdy wszystkie wybrane sterowania muszą być zamknięte/aktywne, aby obecność mogła być podtrzymana. Wybierz Dowolne, gdy wystarczy jedno zamknięte/aktywne sterowanie, na przykład włączony telewizor.",
+          "unavailable_behavior": "Wybierz, czy brakujące, nieznane lub niedostępne źródło ma sprawić, że ten czujnik obecności będzie niedostępny, czy ma po prostu liczyć się jako nieaktywne/wyłączone.",
+          "show_debug_attributes": "Domyślnie wyłączone. Włącz tylko podczas rozwiązywania problemów, aby pokazać szczegółowe stany źródeł, oceny, timery, cooldowny i oczekujące potwierdzenia.",
+          "no_motion_timeout_minutes": "Minuty. Gdy obecność jest podtrzymywana, a sterowania są zamknięte/aktywne, wyłącz po tylu minutach bez ruchu. Użyj 60 dla jednej godziny. Użyj 0, aby wyłączyć ten limit.",
+          "open_no_motion_timeout_minutes": "Minuty. Gdy sterowania są otwarte/wyłączone, utrzymaj obecność przez ten czas po wyłączeniu wszystkich czujników ruchu. Użyj 0, aby natychmiast podążać za ruchem."
+        }
+      },
+      "control_state": {
+        "title": "Skonfiguruj jedno sterowanie",
+        "description": "Sterowanie {control_number} z {control_total}: **{control_name}** (`{control_entity_id}`).\n\nUstaw prawdziwą rzecz w stanie, który ma podtrzymywać obecność. Zamknij drzwi, włącz telewizor, uruchom urządzenie albo włącz pomocnika. Home Assistant mówi, że ta encja ma teraz stan `{current_state}`.\n\nWybierz wartość pokazywaną wtedy, gdy ma podtrzymywać obecność.",
+        "data": {
+          "control_active_state": "Która wartość oznacza zamknięte/aktywne?"
+        },
+        "data_description": {
+          "control_active_state": "Wybierz On, jeśli encja mówi on, gdy ma podtrzymywać obecność. Wybierz Off, jeśli mówi off, gdy ma podtrzymywać obecność."
+        }
+      },
+      "motion_cooldown": {
+        "title": "Skonfiguruj jeden czujnik ruchu",
+        "description": "Czujnik ruchu {motion_number} z {motion_total}: **{motion_name}** (`{motion_entity_id}`).\n\nPodaj, jak długo ten czujnik musi nadal mówić `on` po tym, jak sterowania staną się zamknięte/aktywne, zanim obecność zostanie potwierdzona. Teraz mówi `{current_state}`.\n\nPrzykład: jeśli ma nadal być włączony 3 minuty po zamknięciu drzwi, wpisz `180`.",
+        "data": {
+          "motion_cooldown": "Cooldown w sekundach"
+        },
+        "data_description": {
+          "motion_cooldown": "Ile sekund ten czujnik ruchu musi nadal być włączony po tym, jak sterowania staną się zamknięte/aktywne."
+        }
+      }
+    },
+    "error": {
+      "no_controls": "Wybierz co najmniej jedno sterowanie.",
+      "no_motions": "Wybierz co najmniej jeden czujnik ruchu."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zaktualizuj czujnik obecności",
+        "description": "Zmień czujniki i czasy dla tego pokoju, obszaru lub sytuacji.",
+        "data": {
+          "name": "Nazwa czujnika obecności",
+          "door_entities": "Sterowania",
+          "motion_entities": "Czujniki ruchu",
+          "default_cooldown": "Początkowy cooldown ruchu w sekundach",
+          "fresh_window": "Czas ochronny po zmianie sterowania w sekundach",
+          "control_closed_mode": "Ile sterowań musi być zamkniętych/aktywnych?",
+          "unavailable_behavior": "Co zrobić, gdy wybrane źródło jest niedostępne?",
+          "show_debug_attributes": "Pokaż atrybuty debugowania",
+          "no_motion_timeout_minutes": "Limit bez ruchu przy zamknięciu/aktywności w minutach",
+          "open_no_motion_timeout_minutes": "Opóźnienie bez ruchu przy nieaktywności w minutach"
+        },
+        "data_description": {
+          "name": "Nazwa, którą Home Assistant pokazuje dla czujnika obecności.",
+          "door_entities": "Wybierz każdy binary sensor, switch, input boolean lub fan, który ma podtrzymywać obecność. Przykłady: zamknięte drzwi, włączony telewizor, działające urządzenie, pomocnik albo wentylator.",
+          "motion_entities": "Wybierz każdy czujnik ruchu, który może wykrywać ruch w tym pokoju lub obszarze.",
+          "default_cooldown": "Sekundy. To wartość początkowa dla nowo dodanych czujników ruchu. Istniejące czujniki zachowują zapisane wartości, chyba że zmienisz je na kolejnych ekranach.",
+          "fresh_window": "Sekundy. Po otwarciu sterowań albo po tym, jak staną się zamknięte/aktywne, czujnik obecności pozostaje włączony bez względu na wszystko. Użyj 15, jeśli nie masz pewności.",
+          "control_closed_mode": "Wybierz Wszystkie, gdy wszystkie wybrane sterowania muszą być zamknięte/aktywne, aby obecność mogła być podtrzymana. Wybierz Dowolne, gdy wystarczy jedno zamknięte/aktywne sterowanie, na przykład włączony telewizor.",
+          "unavailable_behavior": "Wybierz, czy brakujące, nieznane lub niedostępne źródło ma sprawić, że ten czujnik obecności będzie niedostępny, czy ma po prostu liczyć się jako nieaktywne/wyłączone.",
+          "show_debug_attributes": "Domyślnie wyłączone. Włącz tylko podczas rozwiązywania problemów, aby pokazać szczegółowe stany źródeł, oceny, timery, cooldowny i oczekujące potwierdzenia.",
+          "no_motion_timeout_minutes": "Minuty. Gdy obecność jest podtrzymywana, a sterowania są zamknięte/aktywne, wyłącz po tylu minutach bez ruchu. Użyj 60 dla jednej godziny. Użyj 0, aby wyłączyć ten limit.",
+          "open_no_motion_timeout_minutes": "Minuty. Gdy sterowania są otwarte/wyłączone, utrzymaj obecność przez ten czas po wyłączeniu wszystkich czujników ruchu. Użyj 0, aby natychmiast podążać za ruchem."
+        }
+      },
+      "control_state": {
+        "title": "Skonfiguruj jedno sterowanie",
+        "description": "Sterowanie {control_number} z {control_total}: **{control_name}** (`{control_entity_id}`).\n\nUstaw prawdziwą rzecz w stanie, który ma podtrzymywać obecność. Zamknij drzwi, włącz telewizor, uruchom urządzenie albo włącz pomocnika. Home Assistant mówi, że ta encja ma teraz stan `{current_state}`.\n\nWybierz wartość pokazywaną wtedy, gdy ma podtrzymywać obecność.",
+        "data": {
+          "control_active_state": "Która wartość oznacza zamknięte/aktywne?"
+        },
+        "data_description": {
+          "control_active_state": "Wybierz On, jeśli encja mówi on, gdy ma podtrzymywać obecność. Wybierz Off, jeśli mówi off, gdy ma podtrzymywać obecność."
+        }
+      },
+      "motion_cooldown": {
+        "title": "Skonfiguruj jeden czujnik ruchu",
+        "description": "Czujnik ruchu {motion_number} z {motion_total}: **{motion_name}** (`{motion_entity_id}`).\n\nPodaj, jak długo ten czujnik musi nadal mówić `on` po tym, jak sterowania staną się zamknięte/aktywne, zanim obecność zostanie potwierdzona. Teraz mówi `{current_state}`.\n\nPrzykład: jeśli ma nadal być włączony 3 minuty po zamknięciu drzwi, wpisz `180`.",
+        "data": {
+          "motion_cooldown": "Cooldown w sekundach"
+        },
+        "data_description": {
+          "motion_cooldown": "Ile sekund ten czujnik ruchu musi nadal być włączony po tym, jak sterowania staną się zamknięte/aktywne."
+        }
+      }
+    },
+    "error": {
+      "no_controls": "Wybierz co najmniej jedno sterowanie.",
+      "no_motions": "Wybierz co najmniej jeden czujnik ruchu."
+    }
+  },
+  "selector": {
+    "control_active_state": {
+      "options": {
+        "on": "On oznacza zamknięte/aktywne",
+        "off": "Off oznacza zamknięte/aktywne"
+      }
+    },
+    "control_closed_mode": {
+      "options": {
+        "all": "Wszystkie wybrane sterowania muszą być zamknięte/aktywne",
+        "any": "Dowolne wybrane sterowanie może być zamknięte/aktywne"
+      }
+    },
+    "unavailable_behavior": {
+      "options": {
+        "mark_unavailable": "Oznacz ten czujnik obecności jako niedostępny",
+        "treat_inactive": "Traktuj niedostępne źródła jako nieaktywne/wyłączone"
+      }
+    }
+  }
+}

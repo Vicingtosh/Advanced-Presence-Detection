@@ -19,14 +19,14 @@ It is built for rooms where motion alone is not reliable. A normal motion sensor
 
 This integration combines motion sensors with one or more **controls**. A control is an entity that helps confirm that presence should stay on. Common examples are door contacts, switches, helpers, appliance status sensors, TV activity helpers, bed sensors, or anything else that indicates someone is probably still there.
 
-Controls are configured as `binary_sensor` or `switch` entities. If the real device is a TV, appliance, media player, or other entity type, you can usually expose its useful state through a helper or template entity.
+Controls can be `binary_sensor`, `switch`, `input_boolean`, or `fan` entities. If another entity type exposes useful activity, you can usually connect it through a helper or template entity.
 
 ## Features
 
 * Creates one calculated presence binary sensor.
 * Supports one or more motion sensors.
 * Supports one or more controls.
-* Controls can be `binary_sensor` or `switch` entities.
+* Controls can be `binary_sensor`, `switch`, `input_boolean`, or `fan` entities.
 * Each control can use `on` or `off` as its active state.
 * The control group can require **all controls active** or **any control active**.
 * Each motion sensor can have its own cooldown.
@@ -70,6 +70,7 @@ You choose:
 * **Unavailable source behavior:** whether missing or unavailable selected entities make the presence sensor unavailable, or simply count as inactive/off.
 * **Active no-motion timeout in minutes:** how long presence may stay on after motion stops while controls are active.
 * **Inactive no-motion delay in minutes:** how long presence may stay on after motion stops while controls are inactive.
+* **Show debug attributes:** exposes detailed source, timer, cooldown, and evaluation data. It is off by default.
 
 For each control, the setup page shows the friendly name, entity id, and current state. Put the real device in the state that should keep presence on, then choose whether Home Assistant shows that state as `on` or `off`.
 
@@ -98,16 +99,22 @@ If motion turns off before the cooldown has passed, presence turns off unless it
 
 ## Troubleshooting
 
-Open the generated presence entity in Home Assistant and look at its attributes.
+Open the generated presence entity in Home Assistant and look at its attributes. By default, it exposes only these compact attributes:
 
-Useful attributes:
+* `state_reason`
+* `latched`
+* `control_group_active`
+* `unavailable_entities`
+
+Enable **Show debug attributes** in the helper options when detailed diagnostics are needed.
+
+Detailed attributes include:
 
 * `control_entities`
 * `control_states`
 * `control_active_states`
 * `control_evaluations`
 * `control_active_mode`
-* `control_group_active`
 * `control_group`
 * `motion_entities`
 * `motion_states`
@@ -119,11 +126,8 @@ Useful attributes:
 * `no_motion_timer_active`
 * `open_no_motion_timeout_minutes`
 * `open_no_motion_timer_active`
-* `latched`
-* `state_reason`
 * `provisional_on`
 * `unavailable_behavior`
-* `unavailable_entities`
 * `pending_confirmation_sensors`
 
 If a control behaves the wrong way around, check `control_evaluations`. It shows the friendly name, raw state, configured active state, and whether the integration currently sees the control as active.

@@ -1,0 +1,135 @@
+{
+  "title": "Advanced Presence Detection",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Créer un capteur de présence",
+        "description": "Cela crée un capteur de présence à partir du mouvement et d'une ou plusieurs entités de contrôle. Un contrôle peut être une porte, un interrupteur TV, un assistant ou autre chose indiquant que la présence doit être maintenue.",
+        "data": {
+          "name": "Nom du capteur de présence",
+          "door_entities": "Contrôles",
+          "motion_entities": "Capteurs de mouvement",
+          "default_cooldown": "Délai de confirmation du mouvement en secondes",
+          "fresh_window": "Temps de grâce après changement de contrôle en secondes",
+          "control_closed_mode": "Combien de contrôles doivent être fermés/actifs ?",
+          "unavailable_behavior": "Que faire si une source choisie est indisponible ?",
+          "show_debug_attributes": "Afficher les attributs de débogage",
+          "no_motion_timeout_minutes": "Délai sans mouvement quand fermé/actif, en minutes",
+          "open_no_motion_timeout_minutes": "Délai sans mouvement quand inactif, en minutes"
+        },
+        "data_description": {
+          "name": "Le nom affiché par Home Assistant pour le nouveau capteur de présence.",
+          "door_entities": "Choisissez chaque binary sensor, switch, input boolean ou fan qui doit maintenir la présence. Exemples : une porte fermée, une TV allumée, un appareil en marche, un assistant ou un ventilateur.",
+          "motion_entities": "Choisissez chaque capteur de mouvement qui peut voir un mouvement dans cette pièce ou zone.",
+          "default_cooldown": "Secondes. C'est la valeur de départ pour chaque capteur de mouvement. Vous pourrez ajuster chaque capteur plus tard. Le minuteur démarre lorsque les contrôles choisis deviennent fermés/actifs.",
+          "fresh_window": "Secondes. Après l'ouverture ou le passage en fermé/actif des contrôles, le capteur de présence reste allumé quoi qu'il arrive. Utilisez 15 si vous n'êtes pas sûr.",
+          "control_closed_mode": "Choisissez Tous lorsque chaque contrôle choisi doit être fermé/actif pour maintenir la présence. Choisissez Un seul lorsqu'un contrôle fermé/actif suffit, comme une TV allumée.",
+          "unavailable_behavior": "Choisissez si une source manquante, inconnue ou indisponible doit rendre ce capteur de présence indisponible, ou simplement compter comme inactive/éteinte.",
+          "show_debug_attributes": "Désactivé par défaut. Activez cette option uniquement pour le dépannage afin d'afficher les états détaillés des sources, les évaluations, les minuteurs, les cooldowns et les confirmations en attente.",
+          "no_motion_timeout_minutes": "Minutes. Lorsque la présence est maintenue pendant que les contrôles sont fermés/actifs, éteindre après ce nombre de minutes sans mouvement. Utilisez 60 pour une heure. Utilisez 0 pour désactiver cette limite.",
+          "open_no_motion_timeout_minutes": "Minutes. Lorsque les contrôles sont ouverts/éteints, garder la présence allumée pendant cette durée après l'extinction de tous les capteurs de mouvement. Utilisez 0 pour suivre le mouvement immédiatement."
+        }
+      },
+      "control_state": {
+        "title": "Configurer un contrôle",
+        "description": "Contrôle {control_number} sur {control_total} : **{control_name}** (`{control_entity_id}`).\n\nMettez l'objet réel dans l'état qui doit maintenir la présence. Fermez la porte, allumez la TV, démarrez l'appareil ou activez l'assistant. Home Assistant indique que cette entité est actuellement `{current_state}`.\n\nChoisissez la valeur affichée lorsqu'elle doit maintenir la présence.",
+        "data": {
+          "control_active_state": "Quelle valeur signifie fermé/actif ?"
+        },
+        "data_description": {
+          "control_active_state": "Choisissez On si l'entité indique on lorsqu'elle doit maintenir la présence. Choisissez Off si elle indique off lorsqu'elle doit maintenir la présence."
+        }
+      },
+      "motion_cooldown": {
+        "title": "Configurer un capteur de mouvement",
+        "description": "Capteur de mouvement {motion_number} sur {motion_total} : **{motion_name}** (`{motion_entity_id}`).\n\nIndiquez combien de temps ce capteur doit encore indiquer `on` après que les contrôles deviennent fermés/actifs avant que la présence soit confirmée. Actuellement, il indique `{current_state}`.\n\nExemple : si vous voulez qu'il soit encore allumé 3 minutes après la fermeture de la porte, saisissez `180`.",
+        "data": {
+          "motion_cooldown": "Délai en secondes"
+        },
+        "data_description": {
+          "motion_cooldown": "Nombre de secondes pendant lesquelles ce capteur de mouvement doit encore être allumé après que les contrôles deviennent fermés/actifs."
+        }
+      }
+    },
+    "error": {
+      "no_controls": "Choisissez au moins un contrôle.",
+      "no_motions": "Choisissez au moins un capteur de mouvement."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Mettre à jour le capteur de présence",
+        "description": "Modifiez les capteurs et les délais pour cette pièce, zone ou situation.",
+        "data": {
+          "name": "Nom du capteur de présence",
+          "door_entities": "Contrôles",
+          "motion_entities": "Capteurs de mouvement",
+          "default_cooldown": "Délai de confirmation du mouvement en secondes",
+          "fresh_window": "Temps de grâce après changement de contrôle en secondes",
+          "control_closed_mode": "Combien de contrôles doivent être fermés/actifs ?",
+          "unavailable_behavior": "Que faire si une source choisie est indisponible ?",
+          "show_debug_attributes": "Afficher les attributs de débogage",
+          "no_motion_timeout_minutes": "Délai sans mouvement quand fermé/actif, en minutes",
+          "open_no_motion_timeout_minutes": "Délai sans mouvement quand inactif, en minutes"
+        },
+        "data_description": {
+          "name": "Le nom affiché par Home Assistant pour le capteur de présence.",
+          "door_entities": "Choisissez chaque binary sensor, switch, input boolean ou fan qui doit maintenir la présence. Exemples : une porte fermée, une TV allumée, un appareil en marche, un assistant ou un ventilateur.",
+          "motion_entities": "Choisissez chaque capteur de mouvement qui peut voir un mouvement dans cette pièce ou zone.",
+          "default_cooldown": "Secondes. C'est la valeur de départ pour les nouveaux capteurs de mouvement. Les capteurs existants gardent leur valeur enregistrée, sauf si vous la modifiez sur les écrans suivants.",
+          "fresh_window": "Secondes. Après l'ouverture ou le passage en fermé/actif des contrôles, le capteur de présence reste allumé quoi qu'il arrive. Utilisez 15 si vous n'êtes pas sûr.",
+          "control_closed_mode": "Choisissez Tous lorsque chaque contrôle choisi doit être fermé/actif pour maintenir la présence. Choisissez Un seul lorsqu'un contrôle fermé/actif suffit, comme une TV allumée.",
+          "unavailable_behavior": "Choisissez si une source manquante, inconnue ou indisponible doit rendre ce capteur de présence indisponible, ou simplement compter comme inactive/éteinte.",
+          "show_debug_attributes": "Désactivé par défaut. Activez cette option uniquement pour le dépannage afin d'afficher les états détaillés des sources, les évaluations, les minuteurs, les cooldowns et les confirmations en attente.",
+          "no_motion_timeout_minutes": "Minutes. Lorsque la présence est maintenue pendant que les contrôles sont fermés/actifs, éteindre après ce nombre de minutes sans mouvement. Utilisez 60 pour une heure. Utilisez 0 pour désactiver cette limite.",
+          "open_no_motion_timeout_minutes": "Minutes. Lorsque les contrôles sont ouverts/éteints, garder la présence allumée pendant cette durée après l'extinction de tous les capteurs de mouvement. Utilisez 0 pour suivre le mouvement immédiatement."
+        }
+      },
+      "control_state": {
+        "title": "Configurer un contrôle",
+        "description": "Contrôle {control_number} sur {control_total} : **{control_name}** (`{control_entity_id}`).\n\nMettez l'objet réel dans l'état qui doit maintenir la présence. Fermez la porte, allumez la TV, démarrez l'appareil ou activez l'assistant. Home Assistant indique que cette entité est actuellement `{current_state}`.\n\nChoisissez la valeur affichée lorsqu'elle doit maintenir la présence.",
+        "data": {
+          "control_active_state": "Quelle valeur signifie fermé/actif ?"
+        },
+        "data_description": {
+          "control_active_state": "Choisissez On si l'entité indique on lorsqu'elle doit maintenir la présence. Choisissez Off si elle indique off lorsqu'elle doit maintenir la présence."
+        }
+      },
+      "motion_cooldown": {
+        "title": "Configurer un capteur de mouvement",
+        "description": "Capteur de mouvement {motion_number} sur {motion_total} : **{motion_name}** (`{motion_entity_id}`).\n\nIndiquez combien de temps ce capteur doit encore indiquer `on` après que les contrôles deviennent fermés/actifs avant que la présence soit confirmée. Actuellement, il indique `{current_state}`.\n\nExemple : si vous voulez qu'il soit encore allumé 3 minutes après la fermeture de la porte, saisissez `180`.",
+        "data": {
+          "motion_cooldown": "Délai en secondes"
+        },
+        "data_description": {
+          "motion_cooldown": "Nombre de secondes pendant lesquelles ce capteur de mouvement doit encore être allumé après que les contrôles deviennent fermés/actifs."
+        }
+      }
+    },
+    "error": {
+      "no_controls": "Choisissez au moins un contrôle.",
+      "no_motions": "Choisissez au moins un capteur de mouvement."
+    }
+  },
+  "selector": {
+    "control_active_state": {
+      "options": {
+        "on": "On signifie fermé/actif",
+        "off": "Off signifie fermé/actif"
+      }
+    },
+    "control_closed_mode": {
+      "options": {
+        "all": "Tous les contrôles choisis doivent être fermés/actifs",
+        "any": "Un contrôle choisi peut être fermé/actif"
+      }
+    },
+    "unavailable_behavior": {
+      "options": {
+        "mark_unavailable": "Rendre ce capteur de présence indisponible",
+        "treat_inactive": "Traiter les sources indisponibles comme inactives/éteintes"
+      }
+    }
+  }
+}

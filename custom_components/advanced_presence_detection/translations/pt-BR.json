@@ -1,0 +1,135 @@
+{
+  "title": "Advanced Presence Detection",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Criar sensor de presença",
+        "description": "Isso cria um sensor de presença a partir de movimento e uma ou mais entidades de controle. Um controle pode ser uma porta, um interruptor da TV, um ajudante ou qualquer outra coisa que indique que a presença deve ser mantida.",
+        "data": {
+          "name": "Nome do sensor de presença",
+          "door_entities": "Controles",
+          "motion_entities": "Sensores de movimento",
+          "default_cooldown": "Cooldown inicial de movimento em segundos",
+          "fresh_window": "Tempo de tolerância após mudança do controle em segundos",
+          "control_closed_mode": "Quantos controles devem estar fechados/ativos?",
+          "unavailable_behavior": "O que deve acontecer se uma fonte selecionada estiver indisponível?",
+          "show_debug_attributes": "Mostrar atributos de depuração",
+          "no_motion_timeout_minutes": "Tempo sem movimento com controles fechados/ativos em minutos",
+          "open_no_motion_timeout_minutes": "Atraso sem movimento com controles inativos em minutos"
+        },
+        "data_description": {
+          "name": "O nome que o Home Assistant vai mostrar para o novo sensor de presença.",
+          "door_entities": "Escolha cada binary sensor, switch, input boolean ou fan que deve manter a presença. Exemplos: uma porta fechada, uma TV ligada, um aparelho em funcionamento, um ajudante ou um ventilador.",
+          "motion_entities": "Escolha cada sensor de movimento que consiga detectar movimento neste cômodo ou área.",
+          "default_cooldown": "Segundos. Este é o valor inicial para cada sensor de movimento. Você pode ajustar cada um depois. O temporizador começa quando os controles selecionados ficam fechados/ativos.",
+          "fresh_window": "Segundos. Depois que os controles abrirem ou ficarem fechados/ativos, mantenha o sensor de presença ligado de qualquer forma. Use 15 se não tiver certeza.",
+          "control_closed_mode": "Escolha Todos quando todos os controles selecionados precisarem estar fechados/ativos para manter a presença. Escolha Qualquer quando um único controle fechado/ativo for suficiente, como uma TV ligada.",
+          "unavailable_behavior": "Escolha se uma fonte ausente, desconhecida ou indisponível deve tornar este sensor de presença indisponível, ou se deve simplesmente contar como inativa/desligada.",
+          "show_debug_attributes": "Desativado por padrão. Ative apenas durante a solução de problemas para mostrar estados detalhados das fontes, avaliações, temporizadores, cooldowns e confirmações pendentes.",
+          "no_motion_timeout_minutes": "Minutos. Quando a presença estiver sendo mantida enquanto os controles estão fechados/ativos, desligue após este número de minutos sem movimento. Use 60 para uma hora. Use 0 para desativar este limite.",
+          "open_no_motion_timeout_minutes": "Minutos. Quando os controles estão abertos/desligados, mantenha a presença ligada por este tempo depois que todos os sensores de movimento desligarem. Use 0 para seguir o movimento imediatamente."
+        }
+      },
+      "control_state": {
+        "title": "Configurar um controle",
+        "description": "Controle {control_number} de {control_total}: **{control_name}** (`{control_entity_id}`).\n\nColoque o objeto real no estado que deve manter a presença. Feche a porta, ligue a TV, inicie o aparelho ou ligue o ajudante. O Home Assistant diz que esta entidade está atualmente em `{current_state}`.\n\nEscolha o valor mostrado quando ela deve manter a presença.",
+        "data": {
+          "control_active_state": "Qual valor significa fechado/ativo?"
+        },
+        "data_description": {
+          "control_active_state": "Escolha On se a entidade disser on quando deve manter a presença. Escolha Off se ela disser off quando deve manter a presença."
+        }
+      },
+      "motion_cooldown": {
+        "title": "Configurar um sensor de movimento",
+        "description": "Sensor de movimento {motion_number} de {motion_total}: **{motion_name}** (`{motion_entity_id}`).\n\nInforme por quanto tempo este sensor ainda deve dizer `on` depois que os controles ficarem fechados/ativos antes de confirmar a presença. Agora ele diz `{current_state}`.\n\nExemplo: se você quiser que ele continue ligado 3 minutos depois de fechar a porta, digite `180`.",
+        "data": {
+          "motion_cooldown": "Cooldown em segundos"
+        },
+        "data_description": {
+          "motion_cooldown": "Quantos segundos este sensor de movimento deve continuar ligado depois que os controles ficarem fechados/ativos."
+        }
+      }
+    },
+    "error": {
+      "no_controls": "Selecione pelo menos um controle.",
+      "no_motions": "Selecione pelo menos um sensor de movimento."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Atualizar sensor de presença",
+        "description": "Altere os sensores e tempos para este cômodo, área ou situação.",
+        "data": {
+          "name": "Nome do sensor de presença",
+          "door_entities": "Controles",
+          "motion_entities": "Sensores de movimento",
+          "default_cooldown": "Cooldown inicial de movimento em segundos",
+          "fresh_window": "Tempo de tolerância após mudança do controle em segundos",
+          "control_closed_mode": "Quantos controles devem estar fechados/ativos?",
+          "unavailable_behavior": "O que deve acontecer se uma fonte selecionada estiver indisponível?",
+          "show_debug_attributes": "Mostrar atributos de depuração",
+          "no_motion_timeout_minutes": "Tempo sem movimento com controles fechados/ativos em minutos",
+          "open_no_motion_timeout_minutes": "Atraso sem movimento com controles inativos em minutos"
+        },
+        "data_description": {
+          "name": "O nome que o Home Assistant mostra para o sensor de presença.",
+          "door_entities": "Escolha cada binary sensor, switch, input boolean ou fan que deve manter a presença. Exemplos: uma porta fechada, uma TV ligada, um aparelho em funcionamento, um ajudante ou um ventilador.",
+          "motion_entities": "Escolha cada sensor de movimento que consiga detectar movimento neste cômodo ou área.",
+          "default_cooldown": "Segundos. Este é o valor inicial para sensores de movimento recém-adicionados. Sensores existentes mantêm os valores salvos, a menos que você os altere nas próximas telas.",
+          "fresh_window": "Segundos. Depois que os controles abrirem ou ficarem fechados/ativos, mantenha o sensor de presença ligado de qualquer forma. Use 15 se não tiver certeza.",
+          "control_closed_mode": "Escolha Todos quando todos os controles selecionados precisarem estar fechados/ativos para manter a presença. Escolha Qualquer quando um único controle fechado/ativo for suficiente, como uma TV ligada.",
+          "unavailable_behavior": "Escolha se uma fonte ausente, desconhecida ou indisponível deve tornar este sensor de presença indisponível, ou se deve simplesmente contar como inativa/desligada.",
+          "show_debug_attributes": "Desativado por padrão. Ative apenas durante a solução de problemas para mostrar estados detalhados das fontes, avaliações, temporizadores, cooldowns e confirmações pendentes.",
+          "no_motion_timeout_minutes": "Minutos. Quando a presença estiver sendo mantida enquanto os controles estão fechados/ativos, desligue após este número de minutos sem movimento. Use 60 para uma hora. Use 0 para desativar este limite.",
+          "open_no_motion_timeout_minutes": "Minutos. Quando os controles estão abertos/desligados, mantenha a presença ligada por este tempo depois que todos os sensores de movimento desligarem. Use 0 para seguir o movimento imediatamente."
+        }
+      },
+      "control_state": {
+        "title": "Configurar um controle",
+        "description": "Controle {control_number} de {control_total}: **{control_name}** (`{control_entity_id}`).\n\nColoque o objeto real no estado que deve manter a presença. Feche a porta, ligue a TV, inicie o aparelho ou ligue o ajudante. O Home Assistant diz que esta entidade está atualmente em `{current_state}`.\n\nEscolha o valor mostrado quando ela deve manter a presença.",
+        "data": {
+          "control_active_state": "Qual valor significa fechado/ativo?"
+        },
+        "data_description": {
+          "control_active_state": "Escolha On se a entidade disser on quando deve manter a presença. Escolha Off se ela disser off quando deve manter a presença."
+        }
+      },
+      "motion_cooldown": {
+        "title": "Configurar um sensor de movimento",
+        "description": "Sensor de movimento {motion_number} de {motion_total}: **{motion_name}** (`{motion_entity_id}`).\n\nInforme por quanto tempo este sensor ainda deve dizer `on` depois que os controles ficarem fechados/ativos antes de confirmar a presença. Agora ele diz `{current_state}`.\n\nExemplo: se você quiser que ele continue ligado 3 minutos depois de fechar a porta, digite `180`.",
+        "data": {
+          "motion_cooldown": "Cooldown em segundos"
+        },
+        "data_description": {
+          "motion_cooldown": "Quantos segundos este sensor de movimento deve continuar ligado depois que os controles ficarem fechados/ativos."
+        }
+      }
+    },
+    "error": {
+      "no_controls": "Selecione pelo menos um controle.",
+      "no_motions": "Selecione pelo menos um sensor de movimento."
+    }
+  },
+  "selector": {
+    "control_active_state": {
+      "options": {
+        "on": "On significa fechado/ativo",
+        "off": "Off significa fechado/ativo"
+      }
+    },
+    "control_closed_mode": {
+      "options": {
+        "all": "Todos os controles selecionados devem estar fechados/ativos",
+        "any": "Qualquer controle selecionado pode estar fechado/ativo"
+      }
+    },
+    "unavailable_behavior": {
+      "options": {
+        "mark_unavailable": "Marcar este sensor de presença como indisponível",
+        "treat_inactive": "Tratar fontes indisponíveis como inativas/desligadas"
+      }
+    }
+  }
+}

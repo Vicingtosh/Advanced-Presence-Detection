@@ -1,0 +1,135 @@
+{
+  "title": "Advanced Presence Detection",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Aanwezigheidssensor maken",
+        "description": "Dit maakt een aanwezigheidssensor op basis van beweging en een of meer controle-entiteiten. Een controle kan een deur, tv-schakelaar, helper of iets anders zijn dat zegt dat aanwezigheid vastgehouden moet worden.",
+        "data": {
+          "name": "Naam van de aanwezigheidssensor",
+          "door_entities": "Controles",
+          "motion_entities": "Bewegingssensoren",
+          "default_cooldown": "Start-cooldown voor beweging in seconden",
+          "fresh_window": "Genadetijd na controlewijziging in seconden",
+          "control_closed_mode": "Hoeveel controles moeten gesloten/actief zijn?",
+          "unavailable_behavior": "Wat moet er gebeuren als een gekozen bron niet beschikbaar is?",
+          "show_debug_attributes": "Debugattributen tonen",
+          "no_motion_timeout_minutes": "Timeout zonder beweging bij gesloten/actieve controles in minuten",
+          "open_no_motion_timeout_minutes": "Vertraging zonder beweging bij inactieve controles in minuten"
+        },
+        "data_description": {
+          "name": "De naam die Home Assistant toont voor de nieuwe aanwezigheidssensor.",
+          "door_entities": "Kies elke binary sensor, switch, input boolean of fan die aanwezigheid moet vasthouden. Voorbeelden: een gesloten deur, een tv die aan staat, een draaiend apparaat, een helper of een ventilator.",
+          "motion_entities": "Kies elke bewegingssensor die beweging in deze kamer of zone kan zien.",
+          "default_cooldown": "Seconden. Dit is de startwaarde voor elke bewegingssensor. Je kunt elke sensor later apart aanpassen. De timer start wanneer de gekozen controles gesloten/actief worden.",
+          "fresh_window": "Seconden. Nadat de controles openen of gesloten/actief worden, blijft de aanwezigheidssensor altijd even aan. Gebruik 15 als je het niet zeker weet.",
+          "control_closed_mode": "Kies Alles wanneer elke gekozen controle gesloten/actief moet zijn voordat aanwezigheid kan worden vastgehouden. Kies Een wanneer één enkele gesloten/actieve controle genoeg is, zoals een tv die aan staat.",
+          "unavailable_behavior": "Kies of een ontbrekende, onbekende of niet-beschikbare bron deze aanwezigheidssensor niet beschikbaar moet maken, of gewoon als inactief/uit moet tellen.",
+          "show_debug_attributes": "Standaard uit. Zet dit alleen aan bij het oplossen van problemen om gedetailleerde bronstatussen, evaluaties, timers, cooldowns en wachtende bevestigingen te tonen.",
+          "no_motion_timeout_minutes": "Minuten. Wanneer aanwezigheid wordt vastgehouden terwijl controles gesloten/actief zijn, schakel uit na zoveel minuten zonder beweging. Gebruik 60 voor één uur. Gebruik 0 om deze limiet uit te zetten.",
+          "open_no_motion_timeout_minutes": "Minuten. Wanneer de controles open/uit zijn, blijft aanwezigheid nog zo lang aan nadat alle bewegingssensoren uit zijn. Gebruik 0 om beweging direct te volgen."
+        }
+      },
+      "control_state": {
+        "title": "Een controle instellen",
+        "description": "Controle {control_number} van {control_total}: **{control_name}** (`{control_entity_id}`).\n\nZet het echte ding in de stand die aanwezigheid moet vasthouden. Sluit de deur, zet de tv aan, start het apparaat of zet de helper aan. Home Assistant zegt dat deze entiteit nu `{current_state}` is.\n\nKies de waarde die wordt getoond wanneer aanwezigheid vastgehouden moet worden.",
+        "data": {
+          "control_active_state": "Welke waarde betekent gesloten/actief?"
+        },
+        "data_description": {
+          "control_active_state": "Kies On als de entiteit on zegt wanneer aanwezigheid vastgehouden moet worden. Kies Off als de entiteit off zegt wanneer aanwezigheid vastgehouden moet worden."
+        }
+      },
+      "motion_cooldown": {
+        "title": "Een bewegingssensor instellen",
+        "description": "Bewegingssensor {motion_number} van {motion_total}: **{motion_name}** (`{motion_entity_id}`).\n\nVul in hoelang deze sensor nog `on` moet blijven nadat de controles gesloten/actief worden voordat aanwezigheid wordt bevestigd. Nu zegt de sensor `{current_state}`.\n\nVoorbeeld: als de sensor 3 minuten na het sluiten van de deur nog aan moet zijn, vul `180` in.",
+        "data": {
+          "motion_cooldown": "Cooldown in seconden"
+        },
+        "data_description": {
+          "motion_cooldown": "Hoeveel seconden deze bewegingssensor nog aan moet zijn nadat de controles gesloten/actief worden."
+        }
+      }
+    },
+    "error": {
+      "no_controls": "Kies minstens één controle.",
+      "no_motions": "Kies minstens één bewegingssensor."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aanwezigheidssensor bijwerken",
+        "description": "Wijzig de sensoren en tijden voor deze kamer, zone of situatie.",
+        "data": {
+          "name": "Naam van de aanwezigheidssensor",
+          "door_entities": "Controles",
+          "motion_entities": "Bewegingssensoren",
+          "default_cooldown": "Start-cooldown voor beweging in seconden",
+          "fresh_window": "Genadetijd na controlewijziging in seconden",
+          "control_closed_mode": "Hoeveel controles moeten gesloten/actief zijn?",
+          "unavailable_behavior": "Wat moet er gebeuren als een gekozen bron niet beschikbaar is?",
+          "show_debug_attributes": "Debugattributen tonen",
+          "no_motion_timeout_minutes": "Timeout zonder beweging bij gesloten/actieve controles in minuten",
+          "open_no_motion_timeout_minutes": "Vertraging zonder beweging bij inactieve controles in minuten"
+        },
+        "data_description": {
+          "name": "De naam die Home Assistant toont voor de aanwezigheidssensor.",
+          "door_entities": "Kies elke binary sensor, switch, input boolean of fan die aanwezigheid moet vasthouden. Voorbeelden: een gesloten deur, een tv die aan staat, een draaiend apparaat, een helper of een ventilator.",
+          "motion_entities": "Kies elke bewegingssensor die beweging in deze kamer of zone kan zien.",
+          "default_cooldown": "Seconden. Dit is de startwaarde voor nieuw toegevoegde bewegingssensoren. Bestaande sensoren houden hun opgeslagen waarde, tenzij je die op de volgende schermen wijzigt.",
+          "fresh_window": "Seconden. Nadat de controles openen of gesloten/actief worden, blijft de aanwezigheidssensor altijd even aan. Gebruik 15 als je het niet zeker weet.",
+          "control_closed_mode": "Kies Alles wanneer elke gekozen controle gesloten/actief moet zijn voordat aanwezigheid kan worden vastgehouden. Kies Een wanneer één enkele gesloten/actieve controle genoeg is, zoals een tv die aan staat.",
+          "unavailable_behavior": "Kies of een ontbrekende, onbekende of niet-beschikbare bron deze aanwezigheidssensor niet beschikbaar moet maken, of gewoon als inactief/uit moet tellen.",
+          "show_debug_attributes": "Standaard uit. Zet dit alleen aan bij het oplossen van problemen om gedetailleerde bronstatussen, evaluaties, timers, cooldowns en wachtende bevestigingen te tonen.",
+          "no_motion_timeout_minutes": "Minuten. Wanneer aanwezigheid wordt vastgehouden terwijl controles gesloten/actief zijn, schakel uit na zoveel minuten zonder beweging. Gebruik 60 voor één uur. Gebruik 0 om deze limiet uit te zetten.",
+          "open_no_motion_timeout_minutes": "Minuten. Wanneer de controles open/uit zijn, blijft aanwezigheid nog zo lang aan nadat alle bewegingssensoren uit zijn. Gebruik 0 om beweging direct te volgen."
+        }
+      },
+      "control_state": {
+        "title": "Een controle instellen",
+        "description": "Controle {control_number} van {control_total}: **{control_name}** (`{control_entity_id}`).\n\nZet het echte ding in de stand die aanwezigheid moet vasthouden. Sluit de deur, zet de tv aan, start het apparaat of zet de helper aan. Home Assistant zegt dat deze entiteit nu `{current_state}` is.\n\nKies de waarde die wordt getoond wanneer aanwezigheid vastgehouden moet worden.",
+        "data": {
+          "control_active_state": "Welke waarde betekent gesloten/actief?"
+        },
+        "data_description": {
+          "control_active_state": "Kies On als de entiteit on zegt wanneer aanwezigheid vastgehouden moet worden. Kies Off als de entiteit off zegt wanneer aanwezigheid vastgehouden moet worden."
+        }
+      },
+      "motion_cooldown": {
+        "title": "Een bewegingssensor instellen",
+        "description": "Bewegingssensor {motion_number} van {motion_total}: **{motion_name}** (`{motion_entity_id}`).\n\nVul in hoelang deze sensor nog `on` moet blijven nadat de controles gesloten/actief worden voordat aanwezigheid wordt bevestigd. Nu zegt de sensor `{current_state}`.\n\nVoorbeeld: als de sensor 3 minuten na het sluiten van de deur nog aan moet zijn, vul `180` in.",
+        "data": {
+          "motion_cooldown": "Cooldown in seconden"
+        },
+        "data_description": {
+          "motion_cooldown": "Hoeveel seconden deze bewegingssensor nog aan moet zijn nadat de controles gesloten/actief worden."
+        }
+      }
+    },
+    "error": {
+      "no_controls": "Kies minstens één controle.",
+      "no_motions": "Kies minstens één bewegingssensor."
+    }
+  },
+  "selector": {
+    "control_active_state": {
+      "options": {
+        "on": "On betekent gesloten/actief",
+        "off": "Off betekent gesloten/actief"
+      }
+    },
+    "control_closed_mode": {
+      "options": {
+        "all": "Alle gekozen controles moeten gesloten/actief zijn",
+        "any": "Een gekozen controle mag gesloten/actief zijn"
+      }
+    },
+    "unavailable_behavior": {
+      "options": {
+        "mark_unavailable": "Maak deze aanwezigheidssensor niet beschikbaar",
+        "treat_inactive": "Behandel niet-beschikbare bronnen als inactief/uit"
+      }
+    }
+  }
+}

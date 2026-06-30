@@ -17,6 +17,9 @@ CONF_NO_MOTION_TIMEOUT = "no_motion_timeout"
 CONF_OPEN_NO_MOTION_TIMEOUT = "open_no_motion_timeout"
 CONF_CONTROL_CLOSED_MODE = "control_closed_mode"
 CONF_UNAVAILABLE_BEHAVIOR = "unavailable_behavior"
+CONF_SHOW_DEBUG_ATTRIBUTES = "show_debug_attributes"
+
+CONTROL_ENTITY_DOMAINS = ("binary_sensor", "switch", "input_boolean", "fan")
 
 DEFAULT_NAME = "Advanced Presence Detection"
 DEFAULT_COOLDOWN = 180
@@ -25,6 +28,7 @@ DEFAULT_NO_MOTION_TIMEOUT = 3600
 DEFAULT_OPEN_NO_MOTION_TIMEOUT = 0
 DEFAULT_CONTROL_CLOSED_MODE = "all"
 DEFAULT_UNAVAILABLE_BEHAVIOR = "mark_unavailable"
+DEFAULT_SHOW_DEBUG_ATTRIBUTES = False
 
 MIN_COOLDOWN = 1
 MAX_COOLDOWN = 3600

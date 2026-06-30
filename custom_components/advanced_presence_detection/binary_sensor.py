@@ -36,7 +36,9 @@ from .const import (
     CONF_MOTION_ENTITIES,
     CONF_NO_MOTION_TIMEOUT,
     CONF_OPEN_NO_MOTION_TIMEOUT,
+    CONF_SHOW_DEBUG_ATTRIBUTES,
     CONF_UNAVAILABLE_BEHAVIOR,
+    CONTROL_ENTITY_DOMAINS,
     CONTROL_CLOSED_MODE_ALL,
     CONTROL_CLOSED_MODE_ANY,
     DEFAULT_COOLDOWN,
@@ -45,6 +47,7 @@ from .const import (
     DEFAULT_NAME,
     DEFAULT_NO_MOTION_TIMEOUT,
     DEFAULT_OPEN_NO_MOTION_TIMEOUT,
+    DEFAULT_SHOW_DEBUG_ATTRIBUTES,
     DEFAULT_UNAVAILABLE_BEHAVIOR,
     DOMAIN,
     MAX_CONTROL_GRACE_TIME,
@@ -64,7 +67,7 @@ VALID_UNAVAILABLE_BEHAVIORS = {
     UNAVAILABLE_BEHAVIOR_MARK_UNAVAILABLE,
     UNAVAILABLE_BEHAVIOR_TREAT_INACTIVE,
 }
-VERSION = "0.9.3"
+VERSION = "0.9.4"
 EASTER_EGG_MESSAGES: dict[str, tuple[str, ...]] = {
     "stillness_mode": (
         "Presence retained. Someone is probably just very still.",
@@ -144,7 +147,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         self._config = {**entry.data, **entry.options}
         self._controls = _entity_ids(
             self._config.get(CONF_CONTROL_ENTITIES, []),
-            {"binary_sensor", "switch"},
+            set(CONTROL_ENTITY_DOMAINS),
         )
         self._motions = _entity_ids(
             self._config.get(CONF_MOTION_ENTITIES, []),
@@ -167,6 +170,13 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         )
         if self._unavailable_behavior not in VALID_UNAVAILABLE_BEHAVIORS:
             self._unavailable_behavior = DEFAULT_UNAVAILABLE_BEHAVIOR
+        self._show_debug_attributes = (
+            self._config.get(
+                CONF_SHOW_DEBUG_ATTRIBUTES,
+                DEFAULT_SHOW_DEBUG_ATTRIBUTES,
+            )
+            is True
+        )
         self._default_cooldown = _bounded_int(
             self._config.get(CONF_DEFAULT_COOLDOWN, DEFAULT_COOLDOWN),
             DEFAULT_COOLDOWN,
@@ -256,70 +266,86 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return debug attributes."""
-        now = dt_util.utcnow()
+        """Return compact attributes and optional diagnostics."""
         control_group_inactive = self._control_group_is_inactive()
         unavailable_entities = self._unavailable_entities()
         attributes = {
-            "control_entities": self._controls,
-            "control_states": self._entity_states(self._controls),
-            "control_active_states": self._effective_control_active_states(),
-            "control_evaluations": self._control_evaluations(),
-            "control_active_mode": self._control_closed_mode,
-            "control_group_active": not control_group_inactive,
-            "motion_entities": self._motions,
-            "motion_states": self._entity_states(self._motions),
-            "motion_cooldowns": self._effective_motion_cooldowns(),
-            "motion_evaluations": self._motion_evaluations(now),
-            "default_cooldown": self._default_cooldown,
-            "closed_since": self._datetime_iso(self._closed_since),
-            "control_grace_time": self._control_grace_time,
-            "control_grace_active": self._control_grace_active,
-            "control_grace_reason": self._control_grace_reason,
-            "control_grace_started_at": self._datetime_iso(
-                self._control_grace_started_at
-            ),
-            "control_grace_ends_at": self._datetime_iso(self._control_grace_ends_at),
-            "control_grace_remaining_seconds": self._remaining_seconds(
-                now, self._control_grace_ends_at
-            ),
-            "fresh_window": self._control_grace_time,
-            "fresh_window_active": self._control_grace_active,
-            "no_motion_timeout": self._no_motion_timeout,
-            "no_motion_timeout_minutes": round(self._no_motion_timeout / 60, 2),
-            "no_motion_timer_active": self._no_motion_timer_active,
-            "no_motion_started_at": self._datetime_iso(self._no_motion_started_at),
-            "no_motion_ends_at": self._datetime_iso(self._no_motion_ends_at),
-            "no_motion_remaining_seconds": self._remaining_seconds(
-                now, self._no_motion_ends_at
-            ),
-            "open_no_motion_timeout": self._open_no_motion_timeout,
-            "open_no_motion_timeout_minutes": round(
-                self._open_no_motion_timeout / 60, 2
-            ),
-            "open_no_motion_timer_active": self._open_no_motion_timer_active,
-            "open_no_motion_expired": self._open_no_motion_expired,
-            "open_no_motion_started_at": self._datetime_iso(
-                self._open_no_motion_started_at
-            ),
-            "open_no_motion_ends_at": self._datetime_iso(
-                self._open_no_motion_ends_at
-            ),
-            "open_no_motion_remaining_seconds": self._remaining_seconds(
-                now, self._open_no_motion_ends_at
-            ),
-            "control_group": (
-                "open_or_off" if control_group_inactive else "closed_or_active"
-            ),
-            "latched": self._latched,
             "state_reason": self._state_reason(control_group_inactive),
-            "provisional_on": self._provisional_on(control_group_inactive),
-            "provisional_reason": self._provisional_reason(control_group_inactive),
-            "unavailable_behavior": self._unavailable_behavior,
+            "latched": self._latched,
+            "control_group_active": not control_group_inactive,
             "unavailable_entities": unavailable_entities,
-            "unavailable_entity_count": len(unavailable_entities),
-            "pending_confirmation_sensors": sorted(self._pending_confirmations),
         }
+        if not self._show_debug_attributes:
+            return attributes
+
+        now = dt_util.utcnow()
+        attributes.update(
+            {
+                "control_entities": self._controls,
+                "control_states": self._entity_states(self._controls),
+                "control_active_states": self._effective_control_active_states(),
+                "control_evaluations": self._control_evaluations(),
+                "control_active_mode": self._control_closed_mode,
+                "motion_entities": self._motions,
+                "motion_states": self._entity_states(self._motions),
+                "motion_cooldowns": self._effective_motion_cooldowns(),
+                "motion_evaluations": self._motion_evaluations(now),
+                "default_cooldown": self._default_cooldown,
+                "closed_since": self._datetime_iso(self._closed_since),
+                "control_grace_time": self._control_grace_time,
+                "control_grace_active": self._control_grace_active,
+                "control_grace_reason": self._control_grace_reason,
+                "control_grace_started_at": self._datetime_iso(
+                    self._control_grace_started_at
+                ),
+                "control_grace_ends_at": self._datetime_iso(
+                    self._control_grace_ends_at
+                ),
+                "control_grace_remaining_seconds": self._remaining_seconds(
+                    now, self._control_grace_ends_at
+                ),
+                "fresh_window": self._control_grace_time,
+                "fresh_window_active": self._control_grace_active,
+                "no_motion_timeout": self._no_motion_timeout,
+                "no_motion_timeout_minutes": round(self._no_motion_timeout / 60, 2),
+                "no_motion_timer_active": self._no_motion_timer_active,
+                "no_motion_started_at": self._datetime_iso(
+                    self._no_motion_started_at
+                ),
+                "no_motion_ends_at": self._datetime_iso(self._no_motion_ends_at),
+                "no_motion_remaining_seconds": self._remaining_seconds(
+                    now, self._no_motion_ends_at
+                ),
+                "open_no_motion_timeout": self._open_no_motion_timeout,
+                "open_no_motion_timeout_minutes": round(
+                    self._open_no_motion_timeout / 60, 2
+                ),
+                "open_no_motion_timer_active": self._open_no_motion_timer_active,
+                "open_no_motion_expired": self._open_no_motion_expired,
+                "open_no_motion_started_at": self._datetime_iso(
+                    self._open_no_motion_started_at
+                ),
+                "open_no_motion_ends_at": self._datetime_iso(
+                    self._open_no_motion_ends_at
+                ),
+                "open_no_motion_remaining_seconds": self._remaining_seconds(
+                    now, self._open_no_motion_ends_at
+                ),
+                "control_group": (
+                    "open_or_off" if control_group_inactive else "closed_or_active"
+                ),
+                "provisional_on": self._provisional_on(control_group_inactive),
+                "provisional_reason": self._provisional_reason(
+                    control_group_inactive
+                ),
+                "unavailable_behavior": self._unavailable_behavior,
+                "unavailable_entity_count": len(unavailable_entities),
+                "pending_confirmation_sensors": sorted(
+                    self._pending_confirmations
+                ),
+                "show_debug_attributes": True,
+            }
+        )
         if self._easteregg_current_mode is not None:
             attributes["easteregg_mode"] = self._easteregg_current_mode
             attributes["easteregg_message"] = self._easteregg_current_message
@@ -541,10 +567,10 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         """Set the presence state and write attributes."""
         self._is_on = value
         if self.hass is not None:
-            self._async_write_ha_state()
+            self._async_publish_state()
 
     @callback
-    def _async_write_ha_state(self) -> None:
+    def _async_publish_state(self) -> None:
         """Update derived attributes and write the entity state."""
         self._update_easteregg_state()
         self.async_write_ha_state()
@@ -858,7 +884,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             delay,
             lambda now: self._async_confirm_motion_after_cooldown(entity_id, now),
         )
-        self._async_write_ha_state()
+        self._async_publish_state()
 
     @callback
     def _async_confirm_motion_after_cooldown(
@@ -916,7 +942,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             self._no_motion_timeout,
             self._async_no_motion_timeout,
         )
-        self._async_write_ha_state()
+        self._async_publish_state()
 
     @callback
     def _start_open_no_motion_timer(self) -> None:
@@ -940,7 +966,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             self._open_no_motion_timeout,
             self._async_open_no_motion_timeout,
         )
-        self._async_write_ha_state()
+        self._async_publish_state()
 
     @callback
     def _async_no_motion_timeout(self, now: datetime | None = None) -> None:

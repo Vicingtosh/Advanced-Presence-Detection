@@ -13,17 +13,19 @@
           "fresh_window": "Control change grace time in seconds",
           "control_closed_mode": "How many controls must be closed/active?",
           "unavailable_behavior": "What should happen if a selected source is unavailable?",
+          "show_debug_attributes": "Show debug attributes",
           "no_motion_timeout_minutes": "Closed/active no-motion timeout in minutes",
           "open_no_motion_timeout_minutes": "Inactive no-motion delay in minutes"
         },
         "data_description": {
           "name": "The name Home Assistant will show for the new presence sensor.",
-          "door_entities": "Pick every binary sensor or switch that should control presence holding. Examples: a closed door, a TV that is on, an appliance that is running, or a helper switch.",
+          "door_entities": "Pick every binary sensor, switch, input boolean, or fan that should control presence holding. Examples: a closed door, a TV that is on, an appliance that is running, a helper, or a fan.",
           "motion_entities": "Pick every motion sensor that can see movement in this room or area.",
           "default_cooldown": "Seconds. This is the starting value for each motion sensor. You can adjust each one later. The timer starts when the selected controls become closed/active.",
           "fresh_window": "Seconds. After the controls open or become closed/active, keep the presence sensor on no matter what. Use 15 if you are not sure.",
           "control_closed_mode": "Choose All when every selected control must be closed/active before presence can be held. Choose Any when one closed/active control is enough, like a TV being on.",
           "unavailable_behavior": "Choose whether a missing, unknown, or unavailable selected source should make this presence sensor unavailable, or should simply count as inactive/off.",
+          "show_debug_attributes": "Off by default. Turn this on only while troubleshooting to show detailed source states, evaluations, timers, cooldowns, and pending confirmations.",
           "no_motion_timeout_minutes": "Minutes. When presence is being held while controls are closed/active, turn it off after this many minutes with no motion. Use 60 for one hour. Use 0 to disable this limit.",
           "open_no_motion_timeout_minutes": "Minutes. When the controls are open/off, keep presence on this long after all motion sensors turn off. Use 0 to follow motion immediately."
         }
@@ -67,17 +69,19 @@
           "fresh_window": "Control change grace time in seconds",
           "control_closed_mode": "How many controls must be closed/active?",
           "unavailable_behavior": "What should happen if a selected source is unavailable?",
+          "show_debug_attributes": "Show debug attributes",
           "no_motion_timeout_minutes": "Closed/active no-motion timeout in minutes",
           "open_no_motion_timeout_minutes": "Inactive no-motion delay in minutes"
         },
         "data_description": {
           "name": "The name Home Assistant shows for the presence sensor.",
-          "door_entities": "Pick every binary sensor or switch that should control presence holding. Examples: a closed door, a TV that is on, an appliance that is running, or a helper switch.",
+          "door_entities": "Pick every binary sensor, switch, input boolean, or fan that should control presence holding. Examples: a closed door, a TV that is on, an appliance that is running, a helper, or a fan.",
           "motion_entities": "Pick every motion sensor that can see movement in this room or area.",
           "default_cooldown": "Seconds. This is the starting value for newly added motion sensors. Existing sensors keep their saved values unless you change them on the next screens.",
           "fresh_window": "Seconds. After the controls open or become closed/active, keep the presence sensor on no matter what. Use 15 if you are not sure.",
           "control_closed_mode": "Choose All when every selected control must be closed/active before presence can be held. Choose Any when one closed/active control is enough, like a TV being on.",
           "unavailable_behavior": "Choose whether a missing, unknown, or unavailable selected source should make this presence sensor unavailable, or should simply count as inactive/off.",
+          "show_debug_attributes": "Off by default. Turn this on only while troubleshooting to show detailed source states, evaluations, timers, cooldowns, and pending confirmations.",
           "no_motion_timeout_minutes": "Minutes. When presence is being held while controls are closed/active, turn it off after this many minutes with no motion. Use 60 for one hour. Use 0 to disable this limit.",
           "open_no_motion_timeout_minutes": "Minutes. When the controls are open/off, keep presence on this long after all motion sensors turn off. Use 0 to follow motion immediately."
         }

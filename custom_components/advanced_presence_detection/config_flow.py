@@ -22,7 +22,9 @@ from .const import (
     CONF_MOTION_ENTITIES,
     CONF_NO_MOTION_TIMEOUT,
     CONF_OPEN_NO_MOTION_TIMEOUT,
+    CONF_SHOW_DEBUG_ATTRIBUTES,
     CONF_UNAVAILABLE_BEHAVIOR,
+    CONTROL_ENTITY_DOMAINS,
     CONTROL_CLOSED_MODE_ALL,
     CONTROL_CLOSED_MODE_ANY,
     DEFAULT_COOLDOWN,
@@ -31,6 +33,7 @@ from .const import (
     DEFAULT_NAME,
     DEFAULT_NO_MOTION_TIMEOUT,
     DEFAULT_OPEN_NO_MOTION_TIMEOUT,
+    DEFAULT_SHOW_DEBUG_ATTRIBUTES,
     DEFAULT_UNAVAILABLE_BEHAVIOR,
     DOMAIN,
     MAX_CONTROL_GRACE_TIME,
@@ -154,7 +157,7 @@ def _normalise_base_input(user_input: dict[str, Any]) -> dict[str, Any]:
         "name": str(user_input.get("name", DEFAULT_NAME)).strip() or DEFAULT_NAME,
         CONF_CONTROL_ENTITIES: _entity_ids(
             user_input.get(CONF_CONTROL_ENTITIES),
-            {"binary_sensor", "switch"},
+            set(CONTROL_ENTITY_DOMAINS),
         ),
         CONF_MOTION_ENTITIES: _entity_ids(
             user_input.get(CONF_MOTION_ENTITIES),
@@ -176,6 +179,13 @@ def _normalise_base_input(user_input: dict[str, Any]) -> dict[str, Any]:
         CONF_UNAVAILABLE_BEHAVIOR: unavailable_behavior,
         CONF_NO_MOTION_TIMEOUT: no_motion_timeout_minutes * 60,
         CONF_OPEN_NO_MOTION_TIMEOUT: open_no_motion_timeout_minutes * 60,
+        CONF_SHOW_DEBUG_ATTRIBUTES: (
+            user_input.get(
+                CONF_SHOW_DEBUG_ATTRIBUTES,
+                DEFAULT_SHOW_DEBUG_ATTRIBUTES,
+            )
+            is True
+        ),
     }
 
 
@@ -201,7 +211,7 @@ def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 default=defaults.get(CONF_CONTROL_ENTITIES, []),
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
-                    domain=["binary_sensor", "switch"],
+                    domain=list(CONTROL_ENTITY_DOMAINS),
                     multiple=True,
                 )
             ),
@@ -285,6 +295,16 @@ def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                     unit_of_measurement="min",
                 )
             ),
+            vol.Required(
+                CONF_SHOW_DEBUG_ATTRIBUTES,
+                default=(
+                    defaults.get(
+                        CONF_SHOW_DEBUG_ATTRIBUTES,
+                        DEFAULT_SHOW_DEBUG_ATTRIBUTES,
+                    )
+                    is True
+                ),
+            ): selector.BooleanSelector(),
         }
     )
 

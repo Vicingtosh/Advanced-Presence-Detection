@@ -1,0 +1,135 @@
+{
+  "title": "Advanced Presence Detection",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Anwesenheitssensor erstellen",
+        "description": "Dies erstellt einen Anwesenheitssensor aus Bewegung und einer oder mehreren Steuer-Entitäten. Eine Steuerung kann eine Tür, ein TV-Schalter, ein Helfer oder etwas anderes sein, das sagt, dass Anwesenheit gehalten werden soll.",
+        "data": {
+          "name": "Name des Anwesenheitssensors",
+          "door_entities": "Steuerungen",
+          "motion_entities": "Bewegungssensoren",
+          "default_cooldown": "Start-Cooldown für Bewegung in Sekunden",
+          "fresh_window": "Schonzeit nach Steuerungswechsel in Sekunden",
+          "control_closed_mode": "Wie viele Steuerungen müssen geschlossen/aktiv sein?",
+          "unavailable_behavior": "Was soll passieren, wenn eine ausgewählte Quelle nicht verfügbar ist?",
+          "show_debug_attributes": "Debug-Attribute anzeigen",
+          "no_motion_timeout_minutes": "Timeout ohne Bewegung bei geschlossen/aktiv in Minuten",
+          "open_no_motion_timeout_minutes": "Verzögerung ohne Bewegung bei inaktiv in Minuten"
+        },
+        "data_description": {
+          "name": "Der Name, den Home Assistant für den neuen Anwesenheitssensor anzeigt.",
+          "door_entities": "Wähle jeden binary sensor, switch, input boolean oder fan, der Anwesenheit halten soll. Beispiele: eine geschlossene Tür, ein eingeschalteter Fernseher, ein laufendes Gerät, ein Helfer oder ein Ventilator.",
+          "motion_entities": "Wähle jeden Bewegungssensor, der Bewegung in diesem Raum oder Bereich erkennen kann.",
+          "default_cooldown": "Sekunden. Dies ist der Startwert für jeden Bewegungssensor. Du kannst jeden Sensor später einzeln anpassen. Der Timer startet, wenn die ausgewählten Steuerungen geschlossen/aktiv werden.",
+          "fresh_window": "Sekunden. Nachdem die Steuerungen öffnen oder geschlossen/aktiv werden, bleibt der Anwesenheitssensor auf jeden Fall an. Nutze 15, wenn du unsicher bist.",
+          "control_closed_mode": "Wähle Alle, wenn jede ausgewählte Steuerung geschlossen/aktiv sein muss, bevor Anwesenheit gehalten werden kann. Wähle Eine, wenn eine einzelne geschlossene/aktive Steuerung reicht, zum Beispiel ein eingeschalteter Fernseher.",
+          "unavailable_behavior": "Wähle, ob eine fehlende, unbekannte oder nicht verfügbare Quelle diesen Anwesenheitssensor nicht verfügbar machen soll, oder ob sie einfach als inaktiv/aus zählt.",
+          "show_debug_attributes": "Standardmäßig ausgeschaltet. Nur zur Fehlersuche einschalten, um detaillierte Quellzustände, Auswertungen, Timer, Cooldowns und ausstehende Bestätigungen anzuzeigen.",
+          "no_motion_timeout_minutes": "Minuten. Wenn Anwesenheit gehalten wird, während Steuerungen geschlossen/aktiv sind, nach so vielen Minuten ohne Bewegung ausschalten. Nutze 60 für eine Stunde. Nutze 0, um diese Grenze zu deaktivieren.",
+          "open_no_motion_timeout_minutes": "Minuten. Wenn die Steuerungen offen/aus sind, bleibt Anwesenheit so lange an, nachdem alle Bewegungssensoren aus sind. Nutze 0, um Bewegung sofort zu folgen."
+        }
+      },
+      "control_state": {
+        "title": "Eine Steuerung einrichten",
+        "description": "Steuerung {control_number} von {control_total}: **{control_name}** (`{control_entity_id}`).\n\nBringe das echte Ding in den Zustand, der Anwesenheit halten soll. Schließe die Tür, schalte den Fernseher ein, starte das Gerät oder schalte den Helfer ein. Home Assistant sagt, dass diese Entität gerade `{current_state}` ist.\n\nWähle den Wert, den sie anzeigt, wenn Anwesenheit gehalten werden soll.",
+        "data": {
+          "control_active_state": "Welcher Wert bedeutet geschlossen/aktiv?"
+        },
+        "data_description": {
+          "control_active_state": "Wähle On, wenn die Entität on sagt, während sie Anwesenheit halten soll. Wähle Off, wenn sie off sagt, während sie Anwesenheit halten soll."
+        }
+      },
+      "motion_cooldown": {
+        "title": "Einen Bewegungssensor einrichten",
+        "description": "Bewegungssensor {motion_number} von {motion_total}: **{motion_name}** (`{motion_entity_id}`).\n\nGib ein, wie lange dieser Sensor noch `on` melden muss, nachdem die Steuerungen geschlossen/aktiv werden, bevor Anwesenheit bestätigt wird. Im Moment meldet er `{current_state}`.\n\nBeispiel: Wenn er 3 Minuten nach dem Schließen der Tür noch an sein soll, gib `180` ein.",
+        "data": {
+          "motion_cooldown": "Cooldown in Sekunden"
+        },
+        "data_description": {
+          "motion_cooldown": "Wie viele Sekunden dieser Bewegungssensor noch an sein muss, nachdem die Steuerungen geschlossen/aktiv werden."
+        }
+      }
+    },
+    "error": {
+      "no_controls": "Wähle mindestens eine Steuerung aus.",
+      "no_motions": "Wähle mindestens einen Bewegungssensor aus."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Anwesenheitssensor aktualisieren",
+        "description": "Ändere Sensoren und Zeiten für diesen Raum, Bereich oder diese Situation.",
+        "data": {
+          "name": "Name des Anwesenheitssensors",
+          "door_entities": "Steuerungen",
+          "motion_entities": "Bewegungssensoren",
+          "default_cooldown": "Start-Cooldown für Bewegung in Sekunden",
+          "fresh_window": "Schonzeit nach Steuerungswechsel in Sekunden",
+          "control_closed_mode": "Wie viele Steuerungen müssen geschlossen/aktiv sein?",
+          "unavailable_behavior": "Was soll passieren, wenn eine ausgewählte Quelle nicht verfügbar ist?",
+          "show_debug_attributes": "Debug-Attribute anzeigen",
+          "no_motion_timeout_minutes": "Timeout ohne Bewegung bei geschlossen/aktiv in Minuten",
+          "open_no_motion_timeout_minutes": "Verzögerung ohne Bewegung bei inaktiv in Minuten"
+        },
+        "data_description": {
+          "name": "Der Name, den Home Assistant für den Anwesenheitssensor anzeigt.",
+          "door_entities": "Wähle jeden binary sensor, switch, input boolean oder fan, der Anwesenheit halten soll. Beispiele: eine geschlossene Tür, ein eingeschalteter Fernseher, ein laufendes Gerät, ein Helfer oder ein Ventilator.",
+          "motion_entities": "Wähle jeden Bewegungssensor, der Bewegung in diesem Raum oder Bereich erkennen kann.",
+          "default_cooldown": "Sekunden. Dies ist der Startwert für neu hinzugefügte Bewegungssensoren. Bestehende Sensoren behalten ihre gespeicherten Werte, außer du änderst sie auf den nächsten Bildschirmen.",
+          "fresh_window": "Sekunden. Nachdem die Steuerungen öffnen oder geschlossen/aktiv werden, bleibt der Anwesenheitssensor auf jeden Fall an. Nutze 15, wenn du unsicher bist.",
+          "control_closed_mode": "Wähle Alle, wenn jede ausgewählte Steuerung geschlossen/aktiv sein muss, bevor Anwesenheit gehalten werden kann. Wähle Eine, wenn eine einzelne geschlossene/aktive Steuerung reicht, zum Beispiel ein eingeschalteter Fernseher.",
+          "unavailable_behavior": "Wähle, ob eine fehlende, unbekannte oder nicht verfügbare Quelle diesen Anwesenheitssensor nicht verfügbar machen soll, oder ob sie einfach als inaktiv/aus zählt.",
+          "show_debug_attributes": "Standardmäßig ausgeschaltet. Nur zur Fehlersuche einschalten, um detaillierte Quellzustände, Auswertungen, Timer, Cooldowns und ausstehende Bestätigungen anzuzeigen.",
+          "no_motion_timeout_minutes": "Minuten. Wenn Anwesenheit gehalten wird, während Steuerungen geschlossen/aktiv sind, nach so vielen Minuten ohne Bewegung ausschalten. Nutze 60 für eine Stunde. Nutze 0, um diese Grenze zu deaktivieren.",
+          "open_no_motion_timeout_minutes": "Minuten. Wenn die Steuerungen offen/aus sind, bleibt Anwesenheit so lange an, nachdem alle Bewegungssensoren aus sind. Nutze 0, um Bewegung sofort zu folgen."
+        }
+      },
+      "control_state": {
+        "title": "Eine Steuerung einrichten",
+        "description": "Steuerung {control_number} von {control_total}: **{control_name}** (`{control_entity_id}`).\n\nBringe das echte Ding in den Zustand, der Anwesenheit halten soll. Schließe die Tür, schalte den Fernseher ein, starte das Gerät oder schalte den Helfer ein. Home Assistant sagt, dass diese Entität gerade `{current_state}` ist.\n\nWähle den Wert, den sie anzeigt, wenn Anwesenheit gehalten werden soll.",
+        "data": {
+          "control_active_state": "Welcher Wert bedeutet geschlossen/aktiv?"
+        },
+        "data_description": {
+          "control_active_state": "Wähle On, wenn die Entität on sagt, während sie Anwesenheit halten soll. Wähle Off, wenn sie off sagt, während sie Anwesenheit halten soll."
+        }
+      },
+      "motion_cooldown": {
+        "title": "Einen Bewegungssensor einrichten",
+        "description": "Bewegungssensor {motion_number} von {motion_total}: **{motion_name}** (`{motion_entity_id}`).\n\nGib ein, wie lange dieser Sensor noch `on` melden muss, nachdem die Steuerungen geschlossen/aktiv werden, bevor Anwesenheit bestätigt wird. Im Moment meldet er `{current_state}`.\n\nBeispiel: Wenn er 3 Minuten nach dem Schließen der Tür noch an sein soll, gib `180` ein.",
+        "data": {
+          "motion_cooldown": "Cooldown in Sekunden"
+        },
+        "data_description": {
+          "motion_cooldown": "Wie viele Sekunden dieser Bewegungssensor noch an sein muss, nachdem die Steuerungen geschlossen/aktiv werden."
+        }
+      }
+    },
+    "error": {
+      "no_controls": "Wähle mindestens eine Steuerung aus.",
+      "no_motions": "Wähle mindestens einen Bewegungssensor aus."
+    }
+  },
+  "selector": {
+    "control_active_state": {
+      "options": {
+        "on": "On bedeutet geschlossen/aktiv",
+        "off": "Off bedeutet geschlossen/aktiv"
+      }
+    },
+    "control_closed_mode": {
+      "options": {
+        "all": "Alle ausgewählten Steuerungen müssen geschlossen/aktiv sein",
+        "any": "Eine ausgewählte Steuerung kann geschlossen/aktiv sein"
+      }
+    },
+    "unavailable_behavior": {
+      "options": {
+        "mark_unavailable": "Diesen Anwesenheitssensor nicht verfügbar machen",
+        "treat_inactive": "Nicht verfügbare Quellen als inaktiv/aus behandeln"
+      }
+    }
+  }
+}
