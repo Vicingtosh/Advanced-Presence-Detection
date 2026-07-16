@@ -19,7 +19,7 @@
         },
         "data_description": {
           "name": "De naam die Home Assistant toont voor de nieuwe aanwezigheidssensor.",
-          "door_entities": "Kies elke binary sensor, switch, input boolean of fan die aanwezigheid moet vasthouden. Voorbeelden: een gesloten deur, een tv die aan staat, een draaiend apparaat, een helper of een ventilator.",
+          "door_entities": "Kies elke binaire sensor, schakelaar, invoerbooleaan, ventilator, lamp, afstandsbediening of mediaspeler die aanwezigheid moet vasthouden. Voorbeelden: een gesloten deur, een tv die afspeelt, een actief apparaat, een helper of een ventilator.",
           "motion_entities": "Kies elke bewegingssensor die beweging in deze kamer of zone kan zien.",
           "default_cooldown": "Seconden. Dit is de startwaarde voor elke bewegingssensor. Je kunt elke sensor later apart aanpassen. De timer start wanneer de gekozen controles gesloten/actief worden.",
           "fresh_window": "Seconden. Nadat de controles openen of gesloten/actief worden, blijft de aanwezigheidssensor altijd even aan. Gebruik 15 als je het niet zeker weet.",
@@ -32,12 +32,12 @@
       },
       "control_state": {
         "title": "Een controle instellen",
-        "description": "Controle {control_number} van {control_total}: **{control_name}** (`{control_entity_id}`).\n\nZet het echte ding in de stand die aanwezigheid moet vasthouden. Sluit de deur, zet de tv aan, start het apparaat of zet de helper aan. Home Assistant zegt dat deze entiteit nu `{current_state}` is.\n\nKies de waarde die wordt getoond wanneer aanwezigheid vastgehouden moet worden.",
+        "description": "Bediening {control_number} van {control_total}: **{control_name}** (`{control_entity_id}`).\n\nZet het echte apparaat in een toestand die aanwezigheid moet vasthouden. Sluit de deur, speel de tv af of pauzeer deze, start het apparaat of schakel de helper in. Home Assistant meldt momenteel de toestand `{current_state}`.\n\nSelecteer alle toestanden die aanwezigheid moeten vasthouden.",
         "data": {
-          "control_active_state": "Welke waarde betekent gesloten/actief?"
+          "control_active_state": "Welke toestanden betekenen gesloten/actief?"
         },
         "data_description": {
-          "control_active_state": "Kies On als de entiteit on zegt wanneer aanwezigheid vastgehouden moet worden. Kies Off als de entiteit off zegt wanneer aanwezigheid vastgehouden moet worden."
+          "control_active_state": "Selecteer een of meer toestanden. Een mediaspeler kan aanwezigheid bijvoorbeeld vasthouden tijdens Afspelen of Gepauzeerd."
         }
       },
       "motion_cooldown": {
@@ -53,7 +53,11 @@
     },
     "error": {
       "no_controls": "Kies minstens één controle.",
-      "no_motions": "Kies minstens één bewegingssensor."
+      "no_motions": "Kies minstens één bewegingssensor.",
+      "same_source_roles": "Selecteer niet dezelfde entiteit als zowel controle als bewegingssensor.",
+      "self_reference": "De aangemaakte aanwezigheidssensor kan zichzelf niet als bron gebruiken.",
+      "presence_cycle": "Een aanwezigheidssensor kan niet via een andere Advanced Presence Detection-helper van zichzelf afhankelijk zijn.",
+      "no_active_states": "Selecteer ten minste één gesloten/actieve toestand."
     }
   },
   "options": {
@@ -75,7 +79,7 @@
         },
         "data_description": {
           "name": "De naam die Home Assistant toont voor de aanwezigheidssensor.",
-          "door_entities": "Kies elke binary sensor, switch, input boolean of fan die aanwezigheid moet vasthouden. Voorbeelden: een gesloten deur, een tv die aan staat, een draaiend apparaat, een helper of een ventilator.",
+          "door_entities": "Kies elke binaire sensor, schakelaar, invoerbooleaan, ventilator, lamp, afstandsbediening of mediaspeler die aanwezigheid moet vasthouden. Voorbeelden: een gesloten deur, een tv die afspeelt, een actief apparaat, een helper of een ventilator.",
           "motion_entities": "Kies elke bewegingssensor die beweging in deze kamer of zone kan zien.",
           "default_cooldown": "Seconden. Dit is de startwaarde voor nieuw toegevoegde bewegingssensoren. Bestaande sensoren houden hun opgeslagen waarde, tenzij je die op de volgende schermen wijzigt.",
           "fresh_window": "Seconden. Nadat de controles openen of gesloten/actief worden, blijft de aanwezigheidssensor altijd even aan. Gebruik 15 als je het niet zeker weet.",
@@ -88,12 +92,12 @@
       },
       "control_state": {
         "title": "Een controle instellen",
-        "description": "Controle {control_number} van {control_total}: **{control_name}** (`{control_entity_id}`).\n\nZet het echte ding in de stand die aanwezigheid moet vasthouden. Sluit de deur, zet de tv aan, start het apparaat of zet de helper aan. Home Assistant zegt dat deze entiteit nu `{current_state}` is.\n\nKies de waarde die wordt getoond wanneer aanwezigheid vastgehouden moet worden.",
+        "description": "Bediening {control_number} van {control_total}: **{control_name}** (`{control_entity_id}`).\n\nZet het echte apparaat in een toestand die aanwezigheid moet vasthouden. Sluit de deur, speel de tv af of pauzeer deze, start het apparaat of schakel de helper in. Home Assistant meldt momenteel de toestand `{current_state}`.\n\nSelecteer alle toestanden die aanwezigheid moeten vasthouden.",
         "data": {
-          "control_active_state": "Welke waarde betekent gesloten/actief?"
+          "control_active_state": "Welke toestanden betekenen gesloten/actief?"
         },
         "data_description": {
-          "control_active_state": "Kies On als de entiteit on zegt wanneer aanwezigheid vastgehouden moet worden. Kies Off als de entiteit off zegt wanneer aanwezigheid vastgehouden moet worden."
+          "control_active_state": "Selecteer een of meer toestanden. Een mediaspeler kan aanwezigheid bijvoorbeeld vasthouden tijdens Afspelen of Gepauzeerd."
         }
       },
       "motion_cooldown": {
@@ -109,14 +113,23 @@
     },
     "error": {
       "no_controls": "Kies minstens één controle.",
-      "no_motions": "Kies minstens één bewegingssensor."
+      "no_motions": "Kies minstens één bewegingssensor.",
+      "same_source_roles": "Selecteer niet dezelfde entiteit als zowel controle als bewegingssensor.",
+      "self_reference": "De aangemaakte aanwezigheidssensor kan zichzelf niet als bron gebruiken.",
+      "presence_cycle": "Een aanwezigheidssensor kan niet via een andere Advanced Presence Detection-helper van zichzelf afhankelijk zijn.",
+      "no_active_states": "Selecteer ten minste één gesloten/actieve toestand."
     }
   },
   "selector": {
     "control_active_state": {
       "options": {
-        "on": "On betekent gesloten/actief",
-        "off": "Off betekent gesloten/actief"
+        "on": "Aan betekent gesloten/actief",
+        "off": "Uit betekent gesloten/actief",
+        "playing": "Afspelen betekent gesloten/actief",
+        "paused": "Gepauzeerd betekent gesloten/actief",
+        "buffering": "Bufferen betekent gesloten/actief",
+        "idle": "Inactief betekent gesloten/actief",
+        "standby": "Stand-by betekent gesloten/actief"
       }
     },
     "control_closed_mode": {
@@ -130,6 +143,12 @@
         "mark_unavailable": "Maak deze aanwezigheidssensor niet beschikbaar",
         "treat_inactive": "Behandel niet-beschikbare bronnen als inactief/uit"
       }
+    }
+  },
+  "issues": {
+    "missing_source_entities": {
+      "title": "Bronentiteiten ontbreken",
+      "description": "De helper **{helper_name}** verwijst naar entiteiten die niet meer bestaan: {entities}. Open **Instellingen > Apparaten & diensten > Helpers**, bewerk deze helper en selecteer vervangende bedieningen of bewegingssensoren."
     }
   }
 }

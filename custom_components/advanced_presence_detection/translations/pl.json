@@ -19,7 +19,7 @@
         },
         "data_description": {
           "name": "Nazwa, którą Home Assistant pokaże dla nowego czujnika obecności.",
-          "door_entities": "Wybierz każdy binary sensor, switch, input boolean lub fan, który ma podtrzymywać obecność. Przykłady: zamknięte drzwi, włączony telewizor, działające urządzenie, pomocnik albo wentylator.",
+          "door_entities": "Wybierz każdy czujnik binarny, przełącznik, input boolean, wentylator, światło, pilot lub odtwarzacz multimedialny, który ma podtrzymywać obecność. Przykłady: zamknięte drzwi, odtwarzający telewizor, działające urządzenie, helper lub wentylator.",
           "motion_entities": "Wybierz każdy czujnik ruchu, który może wykrywać ruch w tym pokoju lub obszarze.",
           "default_cooldown": "Sekundy. To wartość początkowa dla każdego czujnika ruchu. Każdy z nich można później dostosować. Timer startuje, gdy wybrane sterowania stają się zamknięte/aktywne.",
           "fresh_window": "Sekundy. Po otwarciu sterowań albo po tym, jak staną się zamknięte/aktywne, czujnik obecności pozostaje włączony bez względu na wszystko. Użyj 15, jeśli nie masz pewności.",
@@ -32,12 +32,12 @@
       },
       "control_state": {
         "title": "Skonfiguruj jedno sterowanie",
-        "description": "Sterowanie {control_number} z {control_total}: **{control_name}** (`{control_entity_id}`).\n\nUstaw prawdziwą rzecz w stanie, który ma podtrzymywać obecność. Zamknij drzwi, włącz telewizor, uruchom urządzenie albo włącz pomocnika. Home Assistant mówi, że ta encja ma teraz stan `{current_state}`.\n\nWybierz wartość pokazywaną wtedy, gdy ma podtrzymywać obecność.",
+        "description": "Sterowanie {control_number} z {control_total}: **{control_name}** (`{control_entity_id}`).\n\nUstaw rzeczywiste urządzenie w stanie, który ma podtrzymywać obecność. Zamknij drzwi, odtwórz lub wstrzymaj telewizor, uruchom urządzenie albo włącz helper. Home Assistant informuje, że ta encja ma obecnie stan `{current_state}`.\n\nWybierz wszystkie stany, które mają podtrzymywać obecność.",
         "data": {
-          "control_active_state": "Która wartość oznacza zamknięte/aktywne?"
+          "control_active_state": "Które stany oznaczają zamknięte/aktywne?"
         },
         "data_description": {
-          "control_active_state": "Wybierz On, jeśli encja mówi on, gdy ma podtrzymywać obecność. Wybierz Off, jeśli mówi off, gdy ma podtrzymywać obecność."
+          "control_active_state": "Wybierz co najmniej jeden stan. Na przykład odtwarzacz multimedialny może podtrzymywać obecność podczas odtwarzania lub pauzy."
         }
       },
       "motion_cooldown": {
@@ -53,7 +53,11 @@
     },
     "error": {
       "no_controls": "Wybierz co najmniej jedno sterowanie.",
-      "no_motions": "Wybierz co najmniej jeden czujnik ruchu."
+      "no_motions": "Wybierz co najmniej jeden czujnik ruchu.",
+      "same_source_roles": "Nie wybieraj tej samej encji jednocześnie jako sterowania i czujnika ruchu.",
+      "self_reference": "Utworzony czujnik obecności nie może używać samego siebie jako źródła.",
+      "presence_cycle": "Czujnik obecności nie może zależeć od samego siebie poprzez inny pomocnik Advanced Presence Detection.",
+      "no_active_states": "Wybierz co najmniej jeden stan zamknięty/aktywny."
     }
   },
   "options": {
@@ -75,7 +79,7 @@
         },
         "data_description": {
           "name": "Nazwa, którą Home Assistant pokazuje dla czujnika obecności.",
-          "door_entities": "Wybierz każdy binary sensor, switch, input boolean lub fan, który ma podtrzymywać obecność. Przykłady: zamknięte drzwi, włączony telewizor, działające urządzenie, pomocnik albo wentylator.",
+          "door_entities": "Wybierz każdy czujnik binarny, przełącznik, input boolean, wentylator, światło, pilot lub odtwarzacz multimedialny, który ma podtrzymywać obecność. Przykłady: zamknięte drzwi, odtwarzający telewizor, działające urządzenie, helper lub wentylator.",
           "motion_entities": "Wybierz każdy czujnik ruchu, który może wykrywać ruch w tym pokoju lub obszarze.",
           "default_cooldown": "Sekundy. To wartość początkowa dla nowo dodanych czujników ruchu. Istniejące czujniki zachowują zapisane wartości, chyba że zmienisz je na kolejnych ekranach.",
           "fresh_window": "Sekundy. Po otwarciu sterowań albo po tym, jak staną się zamknięte/aktywne, czujnik obecności pozostaje włączony bez względu na wszystko. Użyj 15, jeśli nie masz pewności.",
@@ -88,12 +92,12 @@
       },
       "control_state": {
         "title": "Skonfiguruj jedno sterowanie",
-        "description": "Sterowanie {control_number} z {control_total}: **{control_name}** (`{control_entity_id}`).\n\nUstaw prawdziwą rzecz w stanie, który ma podtrzymywać obecność. Zamknij drzwi, włącz telewizor, uruchom urządzenie albo włącz pomocnika. Home Assistant mówi, że ta encja ma teraz stan `{current_state}`.\n\nWybierz wartość pokazywaną wtedy, gdy ma podtrzymywać obecność.",
+        "description": "Sterowanie {control_number} z {control_total}: **{control_name}** (`{control_entity_id}`).\n\nUstaw rzeczywiste urządzenie w stanie, który ma podtrzymywać obecność. Zamknij drzwi, odtwórz lub wstrzymaj telewizor, uruchom urządzenie albo włącz helper. Home Assistant informuje, że ta encja ma obecnie stan `{current_state}`.\n\nWybierz wszystkie stany, które mają podtrzymywać obecność.",
         "data": {
-          "control_active_state": "Która wartość oznacza zamknięte/aktywne?"
+          "control_active_state": "Które stany oznaczają zamknięte/aktywne?"
         },
         "data_description": {
-          "control_active_state": "Wybierz On, jeśli encja mówi on, gdy ma podtrzymywać obecność. Wybierz Off, jeśli mówi off, gdy ma podtrzymywać obecność."
+          "control_active_state": "Wybierz co najmniej jeden stan. Na przykład odtwarzacz multimedialny może podtrzymywać obecność podczas odtwarzania lub pauzy."
         }
       },
       "motion_cooldown": {
@@ -109,14 +113,23 @@
     },
     "error": {
       "no_controls": "Wybierz co najmniej jedno sterowanie.",
-      "no_motions": "Wybierz co najmniej jeden czujnik ruchu."
+      "no_motions": "Wybierz co najmniej jeden czujnik ruchu.",
+      "same_source_roles": "Nie wybieraj tej samej encji jednocześnie jako sterowania i czujnika ruchu.",
+      "self_reference": "Utworzony czujnik obecności nie może używać samego siebie jako źródła.",
+      "presence_cycle": "Czujnik obecności nie może zależeć od samego siebie poprzez inny pomocnik Advanced Presence Detection.",
+      "no_active_states": "Wybierz co najmniej jeden stan zamknięty/aktywny."
     }
   },
   "selector": {
     "control_active_state": {
       "options": {
-        "on": "On oznacza zamknięte/aktywne",
-        "off": "Off oznacza zamknięte/aktywne"
+        "on": "Włączone oznacza zamknięte/aktywne",
+        "off": "Wyłączone oznacza zamknięte/aktywne",
+        "playing": "Odtwarzanie oznacza zamknięte/aktywne",
+        "paused": "Wstrzymane oznacza zamknięte/aktywne",
+        "buffering": "Buforowanie oznacza zamknięte/aktywne",
+        "idle": "Bezczynne oznacza zamknięte/aktywne",
+        "standby": "Tryb gotowości oznacza zamknięte/aktywne"
       }
     },
     "control_closed_mode": {
@@ -130,6 +143,12 @@
         "mark_unavailable": "Oznacz ten czujnik obecności jako niedostępny",
         "treat_inactive": "Traktuj niedostępne źródła jako nieaktywne/wyłączone"
       }
+    }
+  },
+  "issues": {
+    "missing_source_entities": {
+      "title": "Brakuje encji źródłowych",
+      "description": "Helper **{helper_name}** odwołuje się do encji, które już nie istnieją: {entities}. Otwórz **Ustawienia > Urządzenia i usługi > Helpery**, edytuj ten helper i wybierz zastępcze sterowania lub czujniki ruchu."
     }
   }
 }

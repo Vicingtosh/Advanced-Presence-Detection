@@ -19,7 +19,7 @@
         },
         "data_description": {
           "name": "Název, který Home Assistant zobrazí pro nový senzor přítomnosti.",
-          "door_entities": "Vyberte každý binary sensor, switch, input boolean nebo fan, který má udržovat přítomnost. Příklady: zavřené dveře, zapnutá TV, běžící spotřebič, pomocník nebo ventilátor.",
+          "door_entities": "Vyberte každý binární senzor, přepínač, vstupní boolean, ventilátor, světlo, dálkové ovládání nebo přehrávač médií, který má udržovat přítomnost. Příklady: zavřené dveře, přehrávající televize, běžící spotřebič, pomocník nebo ventilátor.",
           "motion_entities": "Vyberte každý senzor pohybu, který může vidět pohyb v této místnosti nebo oblasti.",
           "default_cooldown": "Sekundy. Toto je počáteční hodnota pro každý senzor pohybu. Každý můžete později upravit. Časovač začne, když se vybraná řízení stanou zavřenými/aktivními.",
           "fresh_window": "Sekundy. Poté, co se řízení otevřou nebo stanou zavřenými/aktivními, ponechte senzor přítomnosti zapnutý bez ohledu na vše ostatní. Pokud si nejste jistí, použijte 15.",
@@ -32,12 +32,12 @@
       },
       "control_state": {
         "title": "Nastavit jedno řízení",
-        "description": "Řízení {control_number} z {control_total}: **{control_name}** (`{control_entity_id}`).\n\nUveďte skutečnou věc do stavu, který má udržovat přítomnost. Zavřete dveře, zapněte TV, spusťte spotřebič nebo zapněte pomocníka. Home Assistant říká, že tato entita je právě `{current_state}`.\n\nVyberte hodnotu, kterou ukazuje, když má udržovat přítomnost.",
+        "description": "Ovládání {control_number} z {control_total}: **{control_name}** (`{control_entity_id}`).\n\nNastavte skutečné zařízení do stavu, který má udržovat přítomnost. Zavřete dveře, spusťte nebo pozastavte televizi, zapněte spotřebič nebo pomocníka. Home Assistant uvádí, že tato entita je nyní ve stavu `{current_state}`.\n\nVyberte všechny stavy, které mají udržovat přítomnost.",
         "data": {
-          "control_active_state": "Která hodnota znamená zavřeno/aktivní?"
+          "control_active_state": "Které stavy znamenají zavřeno/aktivní?"
         },
         "data_description": {
-          "control_active_state": "Vyberte On, pokud entita říká on, když má udržovat přítomnost. Vyberte Off, pokud říká off, když má udržovat přítomnost."
+          "control_active_state": "Vyberte jeden nebo více stavů. Přehrávač médií může například udržovat přítomnost při přehrávání nebo pozastavení."
         }
       },
       "motion_cooldown": {
@@ -53,7 +53,11 @@
     },
     "error": {
       "no_controls": "Vyberte alespoň jedno řízení.",
-      "no_motions": "Vyberte alespoň jeden senzor pohybu."
+      "no_motions": "Vyberte alespoň jeden senzor pohybu.",
+      "same_source_roles": "Nevybírejte stejnou entitu současně jako řízení i senzor pohybu.",
+      "self_reference": "Vytvořený senzor přítomnosti nemůže používat sám sebe jako zdroj.",
+      "presence_cycle": "Senzor přítomnosti nemůže záviset sám na sobě prostřednictvím jiného pomocníka Advanced Presence Detection.",
+      "no_active_states": "Vyberte alespoň jeden zavřený/aktivní stav."
     }
   },
   "options": {
@@ -75,7 +79,7 @@
         },
         "data_description": {
           "name": "Název, který Home Assistant zobrazuje pro senzor přítomnosti.",
-          "door_entities": "Vyberte každý binary sensor, switch, input boolean nebo fan, který má udržovat přítomnost. Příklady: zavřené dveře, zapnutá TV, běžící spotřebič, pomocník nebo ventilátor.",
+          "door_entities": "Vyberte každý binární senzor, přepínač, vstupní boolean, ventilátor, světlo, dálkové ovládání nebo přehrávač médií, který má udržovat přítomnost. Příklady: zavřené dveře, přehrávající televize, běžící spotřebič, pomocník nebo ventilátor.",
           "motion_entities": "Vyberte každý senzor pohybu, který může vidět pohyb v této místnosti nebo oblasti.",
           "default_cooldown": "Sekundy. Toto je počáteční hodnota pro nově přidané senzory pohybu. Existující senzory si ponechají uložené hodnoty, pokud je nezměníte na dalších obrazovkách.",
           "fresh_window": "Sekundy. Poté, co se řízení otevřou nebo stanou zavřenými/aktivními, ponechte senzor přítomnosti zapnutý bez ohledu na vše ostatní. Pokud si nejste jistí, použijte 15.",
@@ -88,12 +92,12 @@
       },
       "control_state": {
         "title": "Nastavit jedno řízení",
-        "description": "Řízení {control_number} z {control_total}: **{control_name}** (`{control_entity_id}`).\n\nUveďte skutečnou věc do stavu, který má udržovat přítomnost. Zavřete dveře, zapněte TV, spusťte spotřebič nebo zapněte pomocníka. Home Assistant říká, že tato entita je právě `{current_state}`.\n\nVyberte hodnotu, kterou ukazuje, když má udržovat přítomnost.",
+        "description": "Ovládání {control_number} z {control_total}: **{control_name}** (`{control_entity_id}`).\n\nNastavte skutečné zařízení do stavu, který má udržovat přítomnost. Zavřete dveře, spusťte nebo pozastavte televizi, zapněte spotřebič nebo pomocníka. Home Assistant uvádí, že tato entita je nyní ve stavu `{current_state}`.\n\nVyberte všechny stavy, které mají udržovat přítomnost.",
         "data": {
-          "control_active_state": "Která hodnota znamená zavřeno/aktivní?"
+          "control_active_state": "Které stavy znamenají zavřeno/aktivní?"
         },
         "data_description": {
-          "control_active_state": "Vyberte On, pokud entita říká on, když má udržovat přítomnost. Vyberte Off, pokud říká off, když má udržovat přítomnost."
+          "control_active_state": "Vyberte jeden nebo více stavů. Přehrávač médií může například udržovat přítomnost při přehrávání nebo pozastavení."
         }
       },
       "motion_cooldown": {
@@ -109,14 +113,23 @@
     },
     "error": {
       "no_controls": "Vyberte alespoň jedno řízení.",
-      "no_motions": "Vyberte alespoň jeden senzor pohybu."
+      "no_motions": "Vyberte alespoň jeden senzor pohybu.",
+      "same_source_roles": "Nevybírejte stejnou entitu současně jako řízení i senzor pohybu.",
+      "self_reference": "Vytvořený senzor přítomnosti nemůže používat sám sebe jako zdroj.",
+      "presence_cycle": "Senzor přítomnosti nemůže záviset sám na sobě prostřednictvím jiného pomocníka Advanced Presence Detection.",
+      "no_active_states": "Vyberte alespoň jeden zavřený/aktivní stav."
     }
   },
   "selector": {
     "control_active_state": {
       "options": {
-        "on": "On znamená zavřeno/aktivní",
-        "off": "Off znamená zavřeno/aktivní"
+        "on": "Zapnuto znamená zavřeno/aktivní",
+        "off": "Vypnuto znamená zavřeno/aktivní",
+        "playing": "Přehrávání znamená zavřeno/aktivní",
+        "paused": "Pozastaveno znamená zavřeno/aktivní",
+        "buffering": "Načítání znamená zavřeno/aktivní",
+        "idle": "Nečinný znamená zavřeno/aktivní",
+        "standby": "Pohotovostní režim znamená zavřeno/aktivní"
       }
     },
     "control_closed_mode": {
@@ -130,6 +143,12 @@
         "mark_unavailable": "Označit tento senzor přítomnosti jako nedostupný",
         "treat_inactive": "Považovat nedostupné zdroje za neaktivní/vypnuté"
       }
+    }
+  },
+  "issues": {
+    "missing_source_entities": {
+      "title": "Chybí zdrojové entity",
+      "description": "Pomocník **{helper_name}** odkazuje na entity, které již neexistují: {entities}. Otevřete **Nastavení > Zařízení a služby > Pomocníci**, upravte tohoto pomocníka a vyberte náhradní ovládací prvky nebo senzory pohybu."
     }
   }
 }

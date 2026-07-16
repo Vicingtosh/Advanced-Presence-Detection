@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from hashlib import sha256
 from random import choice
 from typing import Any
 
@@ -20,10 +22,10 @@ from homeassistant.core import (
     State,
     callback,
 )
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_call_later, async_track_state_change_event
-from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -38,11 +40,11 @@ from .const import (
     CONF_OPEN_NO_MOTION_TIMEOUT,
     CONF_SHOW_DEBUG_ATTRIBUTES,
     CONF_UNAVAILABLE_BEHAVIOR,
-    CONTROL_ENTITY_DOMAINS,
     CONTROL_CLOSED_MODE_ALL,
     CONTROL_CLOSED_MODE_ANY,
-    DEFAULT_COOLDOWN,
+    CONTROL_ENTITY_DOMAINS,
     DEFAULT_CONTROL_CLOSED_MODE,
+    DEFAULT_COOLDOWN,
     DEFAULT_FRESH_WINDOW,
     DEFAULT_NAME,
     DEFAULT_NO_MOTION_TIMEOUT,
@@ -59,15 +61,15 @@ from .const import (
     UNAVAILABLE_BEHAVIOR_MARK_UNAVAILABLE,
     UNAVAILABLE_BEHAVIOR_TREAT_INACTIVE,
 )
+from .source_graph import normalise_entity_ids, source_ids_causing_cycle
 
 UNKNOWN_STATES = {STATE_UNKNOWN, STATE_UNAVAILABLE}
-VALID_ACTIVE_STATES = {"on", "off"}
 VALID_CONTROL_CLOSED_MODES = {CONTROL_CLOSED_MODE_ALL, CONTROL_CLOSED_MODE_ANY}
 VALID_UNAVAILABLE_BEHAVIORS = {
     UNAVAILABLE_BEHAVIOR_MARK_UNAVAILABLE,
     UNAVAILABLE_BEHAVIOR_TREAT_INACTIVE,
 }
-VERSION = "0.9.4"
+RESTORE_SOURCE_WAIT_SECONDS = 60
 EASTER_EGG_MESSAGES: dict[str, tuple[str, ...]] = {
     "stillness_mode": (
         "Presence retained. Someone is probably just very still.",
@@ -86,6 +88,101 @@ EASTER_EGG_MESSAGES: dict[str, tuple[str, ...]] = {
 }
 
 
+def _normalise_active_states(value: Any) -> frozenset[str]:
+    """Return one or more usable active states from old or new config data."""
+    if isinstance(value, str):
+        candidates = [value]
+    else:
+        try:
+            candidates = list(value)
+        except TypeError:
+            candidates = []
+
+    states = {
+        str(candidate)
+        for candidate in candidates
+        if str(candidate) and str(candidate) not in UNKNOWN_STATES
+    }
+    return frozenset(states or {STATE_ON})
+
+
+class PresenceExtraStoredData(ExtraStoredData):
+    """Restorable runtime state for one presence entity."""
+
+    def __init__(
+        self,
+        *,
+        config_signature: str,
+        latched: bool,
+        closed_since: str | None,
+        control_grace_reason: str | None,
+        control_grace_started_at: str | None,
+        control_grace_ends_at: str | None,
+        no_motion_started_at: str | None,
+        no_motion_ends_at: str | None,
+        open_no_motion_started_at: str | None,
+        open_no_motion_ends_at: str | None,
+        open_no_motion_expired: bool,
+        motion_off_since: str | None,
+    ) -> None:
+        """Initialize stored runtime data."""
+        self.config_signature = config_signature
+        self.latched = latched
+        self.closed_since = closed_since
+        self.control_grace_reason = control_grace_reason
+        self.control_grace_started_at = control_grace_started_at
+        self.control_grace_ends_at = control_grace_ends_at
+        self.no_motion_started_at = no_motion_started_at
+        self.no_motion_ends_at = no_motion_ends_at
+        self.open_no_motion_started_at = open_no_motion_started_at
+        self.open_no_motion_ends_at = open_no_motion_ends_at
+        self.open_no_motion_expired = open_no_motion_expired
+        self.motion_off_since = motion_off_since
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return JSON-serializable restore data."""
+        return {
+            "version": 3,
+            "config_signature": self.config_signature,
+            "latched": self.latched,
+            "closed_since": self.closed_since,
+            "control_grace_reason": self.control_grace_reason,
+            "control_grace_started_at": self.control_grace_started_at,
+            "control_grace_ends_at": self.control_grace_ends_at,
+            "no_motion_started_at": self.no_motion_started_at,
+            "no_motion_ends_at": self.no_motion_ends_at,
+            "open_no_motion_started_at": self.open_no_motion_started_at,
+            "open_no_motion_ends_at": self.open_no_motion_ends_at,
+            "open_no_motion_expired": self.open_no_motion_expired,
+            "motion_off_since": self.motion_off_since,
+        }
+
+    @classmethod
+    def from_dict(cls, restored: dict[str, Any]) -> PresenceExtraStoredData | None:
+        """Return validated restore data from Home Assistant storage."""
+        if restored.get("version") not in (2, 3):
+            return None
+
+        def optional_string(key: str) -> str | None:
+            value = restored.get(key)
+            return value if isinstance(value, str) else None
+
+        return cls(
+            config_signature=optional_string("config_signature") or "",
+            latched=restored.get("latched") is True,
+            closed_since=optional_string("closed_since"),
+            control_grace_reason=optional_string("control_grace_reason"),
+            control_grace_started_at=optional_string("control_grace_started_at"),
+            control_grace_ends_at=optional_string("control_grace_ends_at"),
+            no_motion_started_at=optional_string("no_motion_started_at"),
+            no_motion_ends_at=optional_string("no_motion_ends_at"),
+            open_no_motion_started_at=optional_string("open_no_motion_started_at"),
+            open_no_motion_ends_at=optional_string("open_no_motion_ends_at"),
+            open_no_motion_expired=restored.get("open_no_motion_expired") is True,
+            motion_off_since=optional_string("motion_off_since"),
+        )
+
+
 def _bounded_int(
     value: Any,
     default: int,
@@ -95,33 +192,10 @@ def _bounded_int(
     """Return an integer limited to the allowed range."""
     try:
         number = int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return default
 
     return max(lower, min(upper, number))
-
-
-def _entity_ids(value: Any, allowed_domains: set[str]) -> list[str]:
-    """Return valid entity ids from stored config data."""
-    if value is None:
-        return []
-
-    if isinstance(value, str):
-        candidates = [value]
-    else:
-        try:
-            candidates = list(value)
-        except TypeError:
-            return []
-
-    entity_ids: list[str] = []
-    for candidate in candidates:
-        entity_id = str(candidate)
-        domain, separator, _object_id = entity_id.partition(".")
-        if separator and domain in allowed_domains:
-            entity_ids.append(entity_id)
-
-    return entity_ids
 
 
 async def async_setup_entry(
@@ -145,20 +219,21 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         """Initialize the binary sensor."""
         self._entry = entry
         self._config = {**entry.data, **entry.options}
-        self._controls = _entity_ids(
+        self._controls = normalise_entity_ids(
             self._config.get(CONF_CONTROL_ENTITIES, []),
             set(CONTROL_ENTITY_DOMAINS),
         )
-        self._motions = _entity_ids(
+        self._motions = normalise_entity_ids(
             self._config.get(CONF_MOTION_ENTITIES, []),
             {"binary_sensor"},
         )
-        self._control_active_states: dict[str, str] = {
-            str(entity_id): str(active_state)
-            for entity_id, active_state in self._config.get(
-                CONF_CONTROL_ACTIVE_STATES, {}
-            ).items()
-            if str(active_state) in VALID_ACTIVE_STATES
+        raw_active_states = self._config.get(CONF_CONTROL_ACTIVE_STATES, {})
+        if not isinstance(raw_active_states, dict):
+            raw_active_states = {}
+        self._control_active_states: dict[str, frozenset[str]] = {
+            str(entity_id): _normalise_active_states(active_states)
+            for entity_id, active_states in raw_active_states.items()
+            if str(entity_id) in self._controls
         }
         self._control_closed_mode = str(
             self._config.get(CONF_CONTROL_CLOSED_MODE, DEFAULT_CONTROL_CLOSED_MODE)
@@ -235,6 +310,14 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         self._open_no_motion_ends_at: datetime | None = None
         self._open_no_motion_expired = False
         self._motion_on_since: dict[str, datetime] = {}
+        self._motion_off_since: datetime | None = None
+        self._pending_restore_data: PresenceExtraStoredData | None = None
+        self._pending_restore_unsub: Callable[[], None] | None = None
+        self._waiting_for_sources = False
+        self._sources_ready = False
+        self._runtime_suspended = False
+        self._last_usable_motion_on: bool | None = None
+        self._invalid_source_entities: list[str] = []
         self._easteregg_current_mode: str | None = None
         self._easteregg_current_message: str | None = None
         self._easteregg_last_message_by_mode: dict[str, str] = {}
@@ -246,8 +329,29 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             name=name,
             manufacturer="Advanced Presence Detection",
             model="Virtual presence sensor",
-            sw_version=VERSION,
-            entry_type=DeviceEntryType.SERVICE,
+            # Explicitly clear the old service classification so existing
+            # registry entries are migrated to visible virtual devices.
+            entry_type=None,
+        )
+
+    @property
+    def extra_restore_state_data(self) -> PresenceExtraStoredData:
+        """Return runtime state that should survive reloads and restarts."""
+        return PresenceExtraStoredData(
+            config_signature=self._configuration_signature(),
+            latched=self._latched,
+            closed_since=self._datetime_iso(self._closed_since),
+            control_grace_reason=self._control_grace_reason,
+            control_grace_started_at=self._datetime_iso(self._control_grace_started_at),
+            control_grace_ends_at=self._datetime_iso(self._control_grace_ends_at),
+            no_motion_started_at=self._datetime_iso(self._no_motion_started_at),
+            no_motion_ends_at=self._datetime_iso(self._no_motion_ends_at),
+            open_no_motion_started_at=self._datetime_iso(
+                self._open_no_motion_started_at
+            ),
+            open_no_motion_ends_at=self._datetime_iso(self._open_no_motion_ends_at),
+            open_no_motion_expired=self._open_no_motion_expired,
+            motion_off_since=self._datetime_iso(self._motion_off_since),
         )
 
     @property
@@ -290,6 +394,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
                 "motion_states": self._entity_states(self._motions),
                 "motion_cooldowns": self._effective_motion_cooldowns(),
                 "motion_evaluations": self._motion_evaluations(now),
+                "motion_off_since": self._datetime_iso(self._motion_off_since),
                 "default_cooldown": self._default_cooldown,
                 "closed_since": self._datetime_iso(self._closed_since),
                 "control_grace_time": self._control_grace_time,
@@ -309,9 +414,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
                 "no_motion_timeout": self._no_motion_timeout,
                 "no_motion_timeout_minutes": round(self._no_motion_timeout / 60, 2),
                 "no_motion_timer_active": self._no_motion_timer_active,
-                "no_motion_started_at": self._datetime_iso(
-                    self._no_motion_started_at
-                ),
+                "no_motion_started_at": self._datetime_iso(self._no_motion_started_at),
                 "no_motion_ends_at": self._datetime_iso(self._no_motion_ends_at),
                 "no_motion_remaining_seconds": self._remaining_seconds(
                     now, self._no_motion_ends_at
@@ -335,14 +438,10 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
                     "open_or_off" if control_group_inactive else "closed_or_active"
                 ),
                 "provisional_on": self._provisional_on(control_group_inactive),
-                "provisional_reason": self._provisional_reason(
-                    control_group_inactive
-                ),
+                "provisional_reason": self._provisional_reason(control_group_inactive),
                 "unavailable_behavior": self._unavailable_behavior,
                 "unavailable_entity_count": len(unavailable_entities),
-                "pending_confirmation_sensors": sorted(
-                    self._pending_confirmations
-                ),
+                "pending_confirmation_sensors": sorted(self._pending_confirmations),
                 "show_debug_attributes": True,
             }
         )
@@ -374,9 +473,26 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
 
     async def async_added_to_hass(self) -> None:
         """Register state listeners and restore state."""
+        await super().async_added_to_hass()
+        self._remove_invalid_source_references()
         last_state = await self.async_get_last_state()
-        if last_state is not None and last_state.state in ("on", "off"):
+
+        restored_data = None
+        if (last_extra_data := await self.async_get_last_extra_data()) is not None:
+            restored_data = PresenceExtraStoredData.from_dict(last_extra_data.as_dict())
+        if (
+            restored_data is not None
+            and restored_data.config_signature != self._configuration_signature()
+        ):
+            restored_data = None
+        if (
+            restored_data is not None
+            and last_state is not None
+            and last_state.state in ("on", "off")
+        ):
             self._is_on = last_state.state == "on"
+        else:
+            self._is_on = False
 
         watched_entities = [*self._controls, *self._motions]
         self._unsub_callbacks.append(
@@ -387,7 +503,17 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             )
         )
 
-        self._async_recompute_after_startup_or_reload()
+        if not self._all_sources_usable() and not self._treat_unavailable_as_inactive:
+            self._start_pending_restore(restored_data)
+            self._async_publish_state()
+            return
+
+        self._sources_ready = True
+        if restored_data is not None:
+            self._async_restore_after_startup_or_reload(restored_data)
+        else:
+            self._async_recompute_after_startup_or_reload()
+        self._remember_usable_source_summary()
 
     async def async_will_remove_from_hass(self) -> None:
         """Clean up listeners."""
@@ -399,26 +525,57 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             unsub()
         self._unsub_callbacks.clear()
         self._motion_on_since.clear()
+        self._cancel_pending_restore()
+        await super().async_will_remove_from_hass()
 
     @callback
-    def _async_state_changed(
-        self, event: Event[EventStateChangedData]
-    ) -> None:
+    def _async_state_changed(self, event: Event[EventStateChangedData]) -> None:
         """Handle a source entity state change."""
         entity_id = event.data["entity_id"]
         old_state = event.data.get("old_state")
         new_state = event.data.get("new_state")
 
+        if self._waiting_for_sources:
+            if self._is_meaningful_usable_change(old_state, new_state):
+                self._pending_restore_data = None
+                self._is_on = False
+
+            if self._all_sources_usable():
+                restored_data = self._consume_pending_restore()
+                self._sources_ready = True
+                if restored_data is None:
+                    self._async_recompute_after_startup_or_reload()
+                else:
+                    self._async_restore_after_startup_or_reload(restored_data)
+                self._remember_usable_source_summary()
+            else:
+                self._async_publish_state()
+            return
+
+        if self._should_suspend_for_unavailable_sources():
+            self._runtime_suspended = True
+            self._async_publish_state()
+            return
+
+        if self._runtime_suspended:
+            self._runtime_suspended = False
+            self._async_resume_after_unavailable()
+            self._remember_usable_source_summary()
+            return
+
         if old_state is None or new_state is None:
             self._async_recompute_after_startup_or_reload()
+            self._remember_usable_source_summary()
             return
 
         if entity_id in self._controls:
             self._async_handle_control_change(entity_id, old_state, new_state)
+            self._remember_usable_source_summary()
             return
 
         if entity_id in self._motions:
             self._async_handle_motion_change(entity_id, old_state, new_state)
+            self._remember_usable_source_summary()
 
     @callback
     def _async_handle_control_change(
@@ -432,6 +589,18 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         is_group_inactive = self._control_group_is_inactive()
 
         self._control_group_inactive = is_group_inactive
+        self._async_apply_control_group_transition(
+            was_group_inactive,
+            is_group_inactive,
+        )
+
+    @callback
+    def _async_apply_control_group_transition(
+        self,
+        was_group_inactive: bool | None,
+        is_group_inactive: bool,
+    ) -> None:
+        """Apply an aggregate control-group transition."""
 
         if is_group_inactive:
             self._closed_since = None
@@ -439,11 +608,11 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             self._cancel_all_pending_confirmations()
             self._cancel_no_motion_timer()
             if was_group_inactive is False:
+                self._start_control_grace("control_opened_or_not_active")
                 if self._any_motion_on():
                     self._cancel_open_no_motion_timer()
                 else:
                     self._start_open_no_motion_timer()
-                self._start_control_grace("control_opened_or_not_active")
                 return
             self._async_refresh_state()
             return
@@ -460,6 +629,53 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         self._async_refresh_state()
 
     @callback
+    def _async_resume_after_unavailable(self) -> None:
+        """Resume from the last trusted state after every source recovers."""
+        previous_group_inactive = self._control_group_inactive
+        previous_motion_on = self._last_usable_motion_on
+        current_group_inactive = self._calculate_control_group_inactive()
+        current_motion_on = self._any_motion_on_direct()
+
+        if current_motion_on:
+            self._motion_off_since = None
+        elif previous_motion_on is True or self._motion_off_since is None:
+            # The exact transition time is unknowable while a source is unavailable.
+            self._motion_off_since = dt_util.utcnow()
+
+        self._control_group_inactive = current_group_inactive
+        if (
+            previous_group_inactive is not None
+            and previous_group_inactive != current_group_inactive
+        ):
+            self._async_apply_control_group_transition(
+                previous_group_inactive,
+                current_group_inactive,
+            )
+            return
+
+        self._resume_deferred_control_grace()
+
+        if current_group_inactive:
+            self._latched = False
+            self._cancel_all_pending_confirmations()
+            self._cancel_no_motion_timer()
+            if current_motion_on:
+                self._cancel_open_no_motion_timer()
+            else:
+                self._resume_or_start_open_no_motion_timer()
+        else:
+            self._cancel_open_no_motion_timer()
+            if self._latched:
+                if current_motion_on:
+                    self._cancel_no_motion_timer()
+                else:
+                    self._resume_or_start_no_motion_timer()
+            else:
+                self._schedule_confirmations_for_current_motion()
+
+        self._async_refresh_state()
+
+    @callback
     def _async_handle_motion_change(
         self,
         entity_id: str,
@@ -467,7 +683,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         new_state: State,
     ) -> None:
         """Handle a motion sensor state change."""
-        self._update_motion_on_since(entity_id, old_state, new_state)
+        self._update_motion_tracking(entity_id, old_state, new_state)
 
         if self._control_group_is_inactive():
             self._closed_since = None
@@ -498,8 +714,95 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         self._async_refresh_state()
 
     @callback
+    def _async_restore_after_startup_or_reload(
+        self, restored: PresenceExtraStoredData
+    ) -> None:
+        """Restore safe runtime state and resume timers with remaining time."""
+        self._motion_off_since = self._restore_datetime(restored.motion_off_since)
+        self._synchronize_motion_off_since()
+        self._control_group_inactive = self._control_group_is_inactive()
+        self._cancel_all_pending_confirmations()
+        self._cancel_control_grace_timer()
+        self._cancel_no_motion_timer()
+        self._cancel_open_no_motion_timer()
+
+        now = dt_util.utcnow()
+        grace_started_at = self._restore_datetime(restored.control_grace_started_at)
+        grace_ends_at = self._restore_datetime(restored.control_grace_ends_at)
+
+        if self._control_group_inactive:
+            self._closed_since = None
+            self._latched = False
+            self._open_no_motion_expired = restored.open_no_motion_expired
+
+            if (
+                restored.control_grace_reason
+                and grace_ends_at is not None
+                and grace_ends_at > now
+            ):
+                self._start_control_grace(
+                    restored.control_grace_reason,
+                    started_at=grace_started_at,
+                    ends_at=grace_ends_at,
+                )
+
+            if not self._any_motion_on() and self._is_on:
+                open_started_at = self._restore_datetime(
+                    restored.open_no_motion_started_at
+                )
+                open_ends_at = self._restore_datetime(restored.open_no_motion_ends_at)
+                if open_ends_at is not None and open_ends_at > now:
+                    self._start_open_no_motion_timer(
+                        started_at=open_started_at,
+                        ends_at=open_ends_at,
+                    )
+                elif open_ends_at is not None:
+                    self._open_no_motion_expired = True
+                elif not self._open_no_motion_expired:
+                    self._start_open_no_motion_timer()
+
+            self._async_refresh_state()
+            return
+
+        self._open_no_motion_expired = False
+        self._closed_since = self._restore_datetime(restored.closed_since) or now
+        self._latched = restored.latched
+
+        if (
+            restored.control_grace_reason
+            and grace_ends_at is not None
+            and grace_ends_at > now
+        ):
+            self._start_control_grace(
+                restored.control_grace_reason,
+                started_at=grace_started_at,
+                ends_at=grace_ends_at,
+            )
+
+        if self._latched and not self._any_motion_on():
+            no_motion_started_at = self._restore_datetime(restored.no_motion_started_at)
+            no_motion_ends_at = self._restore_datetime(restored.no_motion_ends_at)
+            if self._no_motion_timeout <= 0:
+                pass
+            elif no_motion_ends_at is not None and no_motion_ends_at > now:
+                self._start_no_motion_timer(
+                    started_at=no_motion_started_at,
+                    ends_at=no_motion_ends_at,
+                )
+            elif no_motion_ends_at is not None:
+                self._latched = False
+            else:
+                self._start_no_motion_timer()
+
+        if not self._latched:
+            self._schedule_confirmations_for_current_motion()
+
+        self._async_refresh_state()
+
+    @callback
     def _async_recompute_after_startup_or_reload(self) -> None:
         """Recompute state after startup or reload."""
+        self._synchronize_motion_off_since()
         self._control_group_inactive = self._control_group_is_inactive()
         self._latched = False
         self._cancel_all_pending_confirmations()
@@ -520,6 +823,10 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     @callback
     def _async_refresh_state(self) -> None:
         """Apply the presence rules and write the entity state."""
+        if self._should_suspend_for_unavailable_sources():
+            self._async_publish_state()
+            return
+
         control_group_inactive = self._control_group_is_inactive()
         self._control_group_inactive = control_group_inactive
 
@@ -575,19 +882,19 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         self._update_easteregg_state()
         self.async_write_ha_state()
 
-    def _effective_control_active_states(self) -> dict[str, str]:
-        """Return the configured active state for every control entity."""
-        return {
-            entity_id: self._control_active_states.get(entity_id, STATE_ON)
-            for entity_id in self._controls
-        }
+    def _effective_control_active_states(self) -> dict[str, str | list[str]]:
+        """Return the configured active states for every control entity."""
+        result: dict[str, str | list[str]] = {}
+        for entity_id in self._controls:
+            states = sorted(
+                self._control_active_states.get(entity_id, frozenset({STATE_ON}))
+            )
+            result[entity_id] = states[0] if len(states) == 1 else states
+        return result
 
     def _effective_motion_cooldowns(self) -> dict[str, int]:
         """Return the configured cooldown for every motion sensor."""
-        return {
-            entity_id: self._cooldown_for(entity_id)
-            for entity_id in self._motions
-        }
+        return {entity_id: self._cooldown_for(entity_id) for entity_id in self._motions}
 
     def _entity_states(self, entity_ids: list[str]) -> dict[str, str | None]:
         """Return current Home Assistant states for debug attributes."""
@@ -597,13 +904,147 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             states[entity_id] = None if state is None else state.state
         return states
 
+    def _all_sources_usable(self) -> bool:
+        """Return true once every configured source has a usable state."""
+        return all(
+            not self._entity_is_unavailable(entity_id)
+            for entity_id in [*self._controls, *self._motions]
+        )
+
+    @staticmethod
+    def _is_meaningful_usable_change(
+        old_state: State | None,
+        new_state: State | None,
+    ) -> bool:
+        """Return true for real source activity, not startup recovery."""
+        return bool(
+            old_state is not None
+            and new_state is not None
+            and old_state.state not in UNKNOWN_STATES
+            and new_state.state not in UNKNOWN_STATES
+            and old_state.state != new_state.state
+        )
+
+    def _should_suspend_for_unavailable_sources(self) -> bool:
+        """Return true when runtime evaluation must preserve trusted state."""
+        return bool(
+            self._sources_ready
+            and not self._treat_unavailable_as_inactive
+            and self._unavailable_entities()
+        )
+
+    def _remember_usable_source_summary(self) -> None:
+        """Remember the most recent fully usable aggregate source state."""
+        if not self._all_sources_usable():
+            return
+        self._control_group_inactive = self._calculate_control_group_inactive()
+        self._last_usable_motion_on = self._any_motion_on_direct()
+        self._synchronize_motion_off_since()
+
+    def _configuration_signature(self) -> str:
+        """Return a stable fingerprint of settings that affect runtime state."""
+        payload = {
+            "controls": self._controls,
+            "motions": self._motions,
+            "control_active_states": {
+                entity_id: sorted(
+                    self._control_active_states.get(entity_id, frozenset({STATE_ON}))
+                )
+                for entity_id in self._controls
+            },
+            "control_closed_mode": self._control_closed_mode,
+            "unavailable_behavior": self._unavailable_behavior,
+            "default_cooldown": self._default_cooldown,
+            "motion_cooldowns": self._effective_motion_cooldowns(),
+            "control_grace_time": self._control_grace_time,
+            "no_motion_timeout": self._no_motion_timeout,
+            "open_no_motion_timeout": self._open_no_motion_timeout,
+        }
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        return sha256(encoded.encode("utf-8")).hexdigest()
+
+    def _remove_invalid_source_references(self) -> None:
+        """Defend against self-references and overlapping stored sources."""
+        own_entity_id = self.entity_id
+        cyclic_sources = source_ids_causing_cycle(
+            self.hass,
+            self._entry.entry_id,
+            [*self._controls, *self._motions],
+        )
+        invalid_sources = set(cyclic_sources)
+        if own_entity_id in self._controls or own_entity_id in self._motions:
+            invalid_sources.add(own_entity_id)
+        invalid_sources.update(set(self._controls) & set(self._motions))
+        self._invalid_source_entities = sorted(invalid_sources)
+        self._controls = [
+            entity_id
+            for entity_id in self._controls
+            if entity_id != own_entity_id and entity_id not in cyclic_sources
+        ]
+        control_entities = set(self._controls)
+        self._motions = [
+            entity_id
+            for entity_id in self._motions
+            if entity_id != own_entity_id
+            and entity_id not in control_entities
+            and entity_id not in cyclic_sources
+        ]
+
+    @callback
+    def _start_pending_restore(self, restored: PresenceExtraStoredData | None) -> None:
+        """Wait briefly for startup sources before abandoning restore data."""
+        self._cancel_pending_restore()
+        self._waiting_for_sources = True
+        self._pending_restore_data = restored
+        self._pending_restore_unsub = async_call_later(
+            self.hass,
+            RESTORE_SOURCE_WAIT_SECONDS,
+            self._async_expire_pending_restore,
+        )
+
+    @callback
+    def _consume_pending_restore(self) -> PresenceExtraStoredData | None:
+        """Return and clear the pending startup restore snapshot."""
+        restored = self._pending_restore_data
+        if self._pending_restore_unsub is not None:
+            self._pending_restore_unsub()
+        self._pending_restore_unsub = None
+        self._pending_restore_data = None
+        self._waiting_for_sources = False
+        return restored
+
+    @callback
+    def _cancel_pending_restore(self) -> None:
+        """Discard a pending startup restore snapshot."""
+        if self._pending_restore_unsub is not None:
+            self._pending_restore_unsub()
+        self._pending_restore_unsub = None
+        self._pending_restore_data = None
+        self._waiting_for_sources = False
+
+    @callback
+    def _async_expire_pending_restore(self, _now: datetime | None = None) -> None:
+        """Expire restore data if not every source appeared in time."""
+        self._pending_restore_unsub = None
+        self._pending_restore_data = None
+        self._waiting_for_sources = False
+        self._sources_ready = True
+        self._is_on = False
+        self._async_recompute_after_startup_or_reload()
+        self._remember_usable_source_summary()
+
     def _unavailable_entities(self) -> list[str]:
         """Return configured source entities that are missing or unavailable."""
-        return [
-            entity_id
-            for entity_id in [*self._controls, *self._motions]
-            if self._entity_is_unavailable(entity_id)
-        ]
+        return sorted(
+            {
+                *self._invalid_source_entities,
+                *(
+                    entity_id
+                    for entity_id in [*self._controls, *self._motions]
+                    if self._entity_is_unavailable(entity_id)
+                ),
+            }
+        )
 
     def _entity_is_unavailable(self, entity_id: str) -> bool:
         """Return true if a source entity is missing, unknown, or unavailable."""
@@ -615,9 +1056,10 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         evaluations: list[dict[str, Any]] = []
         for entity_id in self._controls:
             state = self.hass.states.get(entity_id)
-            configured_active_state = self._control_active_states.get(
-                entity_id, STATE_ON
+            configured_active_states = self._control_active_states.get(
+                entity_id, frozenset({STATE_ON})
             )
+            configured_active_state_list = sorted(configured_active_states)
             raw_state = None if state is None else state.state
             is_unavailable = self._entity_is_unavailable(entity_id)
             evaluations.append(
@@ -626,9 +1068,14 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
                     "friendly_name": self._friendly_name(entity_id),
                     "raw_state": raw_state,
                     "is_unavailable_boolean": is_unavailable,
-                    "configured_active_state": configured_active_state,
+                    "configured_active_state": (
+                        configured_active_state_list[0]
+                        if len(configured_active_state_list) == 1
+                        else None
+                    ),
+                    "configured_active_states": configured_active_state_list,
                     "is_active_boolean": (
-                        not is_unavailable and raw_state == configured_active_state
+                        not is_unavailable and raw_state in configured_active_states
                     ),
                 }
             )
@@ -689,18 +1136,24 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         return None if value is None else value.isoformat()
 
     @staticmethod
-    def _age_seconds(
-        now: datetime, changed_at: datetime | None
-    ) -> float | None:
+    def _restore_datetime(value: str | None) -> datetime | None:
+        """Return a valid timezone-aware datetime from restore storage."""
+        if value is None:
+            return None
+        restored = dt_util.parse_datetime(value)
+        if restored is None or restored.tzinfo is None:
+            return None
+        return restored
+
+    @staticmethod
+    def _age_seconds(now: datetime, changed_at: datetime | None) -> float | None:
         """Return a rounded age in seconds."""
         if changed_at is None:
             return None
         return round((now - changed_at).total_seconds(), 1)
 
     @staticmethod
-    def _remaining_seconds(
-        now: datetime, ends_at: datetime | None
-    ) -> float | None:
+    def _remaining_seconds(now: datetime, ends_at: datetime | None) -> float | None:
         """Return rounded remaining seconds until a timer ends."""
         if ends_at is None:
             return None
@@ -708,6 +1161,15 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
 
     def _control_group_is_inactive(self) -> bool:
         """Return true if the control group is open or not active."""
+        if (
+            self._should_suspend_for_unavailable_sources()
+            and self._control_group_inactive is not None
+        ):
+            return self._control_group_inactive
+        return self._calculate_control_group_inactive()
+
+    def _calculate_control_group_inactive(self) -> bool:
+        """Calculate the control group directly from current source states."""
         return not self._control_group_closed()
 
     def _control_group_closed(self) -> bool:
@@ -716,8 +1178,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             return False
 
         active_states = [
-            self._control_is_active(entity_id)
-            for entity_id in self._controls
+            self._control_is_active(entity_id) for entity_id in self._controls
         ]
 
         if self._control_closed_mode == CONTROL_CLOSED_MODE_ANY:
@@ -734,11 +1195,22 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
 
     def _state_is_control_active(self, entity_id: str, state: State) -> bool:
         """Return true if a state is the configured active state."""
-        active_state = self._control_active_states.get(entity_id, STATE_ON)
-        return state.state == active_state
+        active_states = self._control_active_states.get(
+            entity_id, frozenset({STATE_ON})
+        )
+        return state.state in active_states
 
     def _any_motion_on(self) -> bool:
         """Return true if any motion sensor is on."""
+        if (
+            self._should_suspend_for_unavailable_sources()
+            and self._last_usable_motion_on is not None
+        ):
+            return self._last_usable_motion_on
+        return self._any_motion_on_direct()
+
+    def _any_motion_on_direct(self) -> bool:
+        """Return current motion without unavailable-state suspension."""
         return any(self._motion_is_on(entity_id) for entity_id in self._motions)
 
     def _motion_is_on(self, entity_id: str) -> bool:
@@ -832,19 +1304,44 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         return message
 
     @callback
-    def _update_motion_on_since(
+    def _update_motion_tracking(
         self,
         entity_id: str,
         old_state: State,
         new_state: State,
     ) -> None:
-        """Track motion-on transitions observed by this entity."""
+        """Track per-sensor motion and continuous all-motion-off time."""
         if new_state.state == STATE_ON:
             if old_state.state != STATE_ON:
                 self._motion_on_since[entity_id] = new_state.last_changed
+        else:
+            self._motion_on_since.pop(entity_id, None)
+
+        if self._any_motion_on_direct():
+            self._motion_off_since = None
             return
 
-        self._motion_on_since.pop(entity_id, None)
+        if self._last_usable_motion_on is True:
+            self._motion_off_since = new_state.last_changed
+        elif self._motion_off_since is None:
+            self._motion_off_since = self._current_motion_off_since()
+
+    def _synchronize_motion_off_since(self) -> None:
+        """Keep the continuous all-motion-off timestamp consistent."""
+        if self._any_motion_on_direct():
+            self._motion_off_since = None
+        elif self._motion_off_since is None:
+            self._motion_off_since = self._current_motion_off_since()
+
+    def _current_motion_off_since(self) -> datetime:
+        """Return when every configured motion source most recently became off."""
+        changed_times = [
+            state.last_changed
+            for entity_id in self._motions
+            if (state := self.hass.states.get(entity_id)) is not None
+            and state.state == "off"
+        ]
+        return max(changed_times, default=dt_util.utcnow())
 
     @callback
     def _schedule_confirmations_for_current_motion(self) -> None:
@@ -879,10 +1376,15 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             self._async_confirm_motion_after_cooldown(entity_id)
             return
 
+        @callback
+        def async_confirm_motion(now: datetime) -> None:
+            """Confirm one motion source on the Home Assistant event loop."""
+            self._async_confirm_motion_after_cooldown(entity_id, now)
+
         self._pending_confirmations[entity_id] = async_call_later(
             self.hass,
             delay,
-            lambda now: self._async_confirm_motion_after_cooldown(entity_id, now),
+            async_confirm_motion,
         )
         self._async_publish_state()
 
@@ -894,6 +1396,10 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     ) -> None:
         """Latch presence if motion is still on after its cooldown."""
         self._pending_confirmations.pop(entity_id, None)
+
+        if self._should_suspend_for_unavailable_sources():
+            self._async_publish_state()
+            return
 
         if self._control_group_is_inactive():
             self._async_refresh_state()
@@ -909,7 +1415,50 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         self._async_refresh_state()
 
     @callback
-    def _start_control_grace(self, reason: str) -> None:
+    def _resume_deferred_control_grace(self) -> None:
+        """Resume a grace timer whose callback fired during an outage."""
+        if self._control_grace_unsub is not None:
+            return
+        reason = self._control_grace_reason
+        started_at = self._control_grace_started_at
+        ends_at = self._control_grace_ends_at
+        if reason is None or ends_at is None:
+            return
+        if ends_at <= dt_util.utcnow():
+            self._control_grace_reason = None
+            self._control_grace_started_at = None
+            self._control_grace_ends_at = None
+            return
+        self._start_control_grace(
+            reason,
+            started_at=started_at,
+            ends_at=ends_at,
+        )
+
+    @callback
+    def _resume_or_start_no_motion_timer(self) -> None:
+        """Resume the active-control timer or start it from motion-off time."""
+        self._start_no_motion_timer(
+            started_at=self._no_motion_started_at,
+            ends_at=self._no_motion_ends_at,
+        )
+
+    @callback
+    def _resume_or_start_open_no_motion_timer(self) -> None:
+        """Resume the inactive-control timer or start it from motion-off time."""
+        self._start_open_no_motion_timer(
+            started_at=self._open_no_motion_started_at,
+            ends_at=self._open_no_motion_ends_at,
+        )
+
+    @callback
+    def _start_control_grace(
+        self,
+        reason: str,
+        *,
+        started_at: datetime | None = None,
+        ends_at: datetime | None = None,
+    ) -> None:
         """Keep presence on for the configured control grace time."""
         self._cancel_control_grace_timer()
 
@@ -918,34 +1467,62 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             return
 
         now = dt_util.utcnow()
+        delay = (
+            self._control_grace_time
+            if ends_at is None
+            else max(0.0, (ends_at - now).total_seconds())
+        )
+        if delay <= 0:
+            self._async_refresh_state()
+            return
+
         self._control_grace_reason = reason
-        self._control_grace_started_at = now
-        self._control_grace_ends_at = now + timedelta(seconds=self._control_grace_time)
+        self._control_grace_started_at = started_at or now
+        self._control_grace_ends_at = ends_at or now + timedelta(seconds=delay)
         self._control_grace_unsub = async_call_later(
             self.hass,
-            self._control_grace_time,
+            delay,
             self._async_end_control_grace,
         )
         self._async_set_is_on(True)
 
     @callback
-    def _start_no_motion_timer(self) -> None:
+    def _start_no_motion_timer(
+        self,
+        *,
+        started_at: datetime | None = None,
+        ends_at: datetime | None = None,
+    ) -> None:
         """Start the closed-or-active no-motion timeout."""
         if self._no_motion_timeout <= 0 or self._no_motion_unsub is not None:
             return
 
         now = dt_util.utcnow()
-        self._no_motion_started_at = now
-        self._no_motion_ends_at = now + timedelta(seconds=self._no_motion_timeout)
+        effective_started_at = started_at or self._motion_off_since or now
+        effective_ends_at = ends_at or effective_started_at + timedelta(
+            seconds=self._no_motion_timeout
+        )
+        delay = max(0.0, (effective_ends_at - now).total_seconds())
+        if delay <= 0:
+            self._async_no_motion_timeout()
+            return
+
+        self._no_motion_started_at = effective_started_at
+        self._no_motion_ends_at = effective_ends_at
         self._no_motion_unsub = async_call_later(
             self.hass,
-            self._no_motion_timeout,
+            delay,
             self._async_no_motion_timeout,
         )
         self._async_publish_state()
 
     @callback
-    def _start_open_no_motion_timer(self) -> None:
+    def _start_open_no_motion_timer(
+        self,
+        *,
+        started_at: datetime | None = None,
+        ends_at: datetime | None = None,
+    ) -> None:
         """Start the open-or-not-active no-motion delay."""
         if (
             self._open_no_motion_timeout <= 0
@@ -956,14 +1533,22 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             return
 
         now = dt_util.utcnow()
-        self._open_no_motion_expired = False
-        self._open_no_motion_started_at = now
-        self._open_no_motion_ends_at = now + timedelta(
+        effective_started_at = started_at or self._motion_off_since or now
+        effective_ends_at = ends_at or effective_started_at + timedelta(
             seconds=self._open_no_motion_timeout
         )
+        delay = max(0.0, (effective_ends_at - now).total_seconds())
+        if delay <= 0:
+            self._open_no_motion_expired = True
+            self._async_refresh_state()
+            return
+
+        self._open_no_motion_expired = False
+        self._open_no_motion_started_at = effective_started_at
+        self._open_no_motion_ends_at = effective_ends_at
         self._open_no_motion_unsub = async_call_later(
             self.hass,
-            self._open_no_motion_timeout,
+            delay,
             self._async_open_no_motion_timeout,
         )
         self._async_publish_state()
@@ -972,6 +1557,10 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     def _async_no_motion_timeout(self, now: datetime | None = None) -> None:
         """Turn presence off after too long with no motion while closed or active."""
         self._no_motion_unsub = None
+        if self._should_suspend_for_unavailable_sources():
+            self._async_publish_state()
+            return
+
         self._no_motion_started_at = None
         self._no_motion_ends_at = None
 
@@ -985,8 +1574,12 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
 
     @callback
     def _async_open_no_motion_timeout(self, now: datetime | None = None) -> None:
-        """Turn presence off after motion has been off long enough while open or not active."""
+        """Turn presence off after the inactive no-motion delay."""
         self._open_no_motion_unsub = None
+        if self._should_suspend_for_unavailable_sources():
+            self._async_publish_state()
+            return
+
         self._open_no_motion_started_at = None
         self._open_no_motion_ends_at = None
 
@@ -1007,6 +1600,10 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     def _async_end_control_grace(self, now: datetime | None = None) -> None:
         """End the control grace window and apply normal rules."""
         self._control_grace_unsub = None
+        if self._should_suspend_for_unavailable_sources():
+            self._async_publish_state()
+            return
+
         self._control_grace_reason = None
         self._control_grace_started_at = None
         self._control_grace_ends_at = None

@@ -19,7 +19,7 @@
         },
         "data_description": {
           "name": "Der Name, den Home Assistant für den neuen Anwesenheitssensor anzeigt.",
-          "door_entities": "Wähle jeden binary sensor, switch, input boolean oder fan, der Anwesenheit halten soll. Beispiele: eine geschlossene Tür, ein eingeschalteter Fernseher, ein laufendes Gerät, ein Helfer oder ein Ventilator.",
+          "door_entities": "Wähle jeden Binärsensor, Schalter, Eingabe-Boolean, Ventilator, jedes Licht, jede Fernbedienung oder jeden Mediaplayer aus, der die Anwesenheit aufrechterhalten soll. Beispiele: eine geschlossene Tür, ein abspielender Fernseher, ein laufendes Gerät, ein Helfer oder ein Ventilator.",
           "motion_entities": "Wähle jeden Bewegungssensor, der Bewegung in diesem Raum oder Bereich erkennen kann.",
           "default_cooldown": "Sekunden. Dies ist der Startwert für jeden Bewegungssensor. Du kannst jeden Sensor später einzeln anpassen. Der Timer startet, wenn die ausgewählten Steuerungen geschlossen/aktiv werden.",
           "fresh_window": "Sekunden. Nachdem die Steuerungen öffnen oder geschlossen/aktiv werden, bleibt der Anwesenheitssensor auf jeden Fall an. Nutze 15, wenn du unsicher bist.",
@@ -32,12 +32,12 @@
       },
       "control_state": {
         "title": "Eine Steuerung einrichten",
-        "description": "Steuerung {control_number} von {control_total}: **{control_name}** (`{control_entity_id}`).\n\nBringe das echte Ding in den Zustand, der Anwesenheit halten soll. Schließe die Tür, schalte den Fernseher ein, starte das Gerät oder schalte den Helfer ein. Home Assistant sagt, dass diese Entität gerade `{current_state}` ist.\n\nWähle den Wert, den sie anzeigt, wenn Anwesenheit gehalten werden soll.",
+        "description": "Steuerung {control_number} von {control_total}: **{control_name}** (`{control_entity_id}`).\n\nBringe das echte Gerät in einen Zustand, der die Anwesenheit aufrechterhalten soll. Schließe die Tür, starte oder pausiere den Fernseher, starte das Gerät oder schalte den Helfer ein. Home Assistant meldet derzeit den Zustand `{current_state}`.\n\nWähle alle Zustände aus, die die Anwesenheit aufrechterhalten sollen.",
         "data": {
-          "control_active_state": "Welcher Wert bedeutet geschlossen/aktiv?"
+          "control_active_state": "Welche Zustände bedeuten geschlossen/aktiv?"
         },
         "data_description": {
-          "control_active_state": "Wähle On, wenn die Entität on sagt, während sie Anwesenheit halten soll. Wähle Off, wenn sie off sagt, während sie Anwesenheit halten soll."
+          "control_active_state": "Wähle einen oder mehrere Zustände. Ein Mediaplayer kann die Anwesenheit zum Beispiel während Wiedergabe oder Pause aufrechterhalten."
         }
       },
       "motion_cooldown": {
@@ -53,7 +53,11 @@
     },
     "error": {
       "no_controls": "Wähle mindestens eine Steuerung aus.",
-      "no_motions": "Wähle mindestens einen Bewegungssensor aus."
+      "no_motions": "Wähle mindestens einen Bewegungssensor aus.",
+      "same_source_roles": "Wähle nicht dieselbe Entität gleichzeitig als Steuerung und Bewegungssensor aus.",
+      "self_reference": "Der erstellte Anwesenheitssensor kann sich nicht selbst als Quelle verwenden.",
+      "presence_cycle": "Ein Anwesenheitssensor kann nicht über einen anderen Advanced-Presence-Detection-Helfer von sich selbst abhängen.",
+      "no_active_states": "Wähle mindestens einen geschlossenen/aktiven Zustand aus."
     }
   },
   "options": {
@@ -75,7 +79,7 @@
         },
         "data_description": {
           "name": "Der Name, den Home Assistant für den Anwesenheitssensor anzeigt.",
-          "door_entities": "Wähle jeden binary sensor, switch, input boolean oder fan, der Anwesenheit halten soll. Beispiele: eine geschlossene Tür, ein eingeschalteter Fernseher, ein laufendes Gerät, ein Helfer oder ein Ventilator.",
+          "door_entities": "Wähle jeden Binärsensor, Schalter, Eingabe-Boolean, Ventilator, jedes Licht, jede Fernbedienung oder jeden Mediaplayer aus, der die Anwesenheit aufrechterhalten soll. Beispiele: eine geschlossene Tür, ein abspielender Fernseher, ein laufendes Gerät, ein Helfer oder ein Ventilator.",
           "motion_entities": "Wähle jeden Bewegungssensor, der Bewegung in diesem Raum oder Bereich erkennen kann.",
           "default_cooldown": "Sekunden. Dies ist der Startwert für neu hinzugefügte Bewegungssensoren. Bestehende Sensoren behalten ihre gespeicherten Werte, außer du änderst sie auf den nächsten Bildschirmen.",
           "fresh_window": "Sekunden. Nachdem die Steuerungen öffnen oder geschlossen/aktiv werden, bleibt der Anwesenheitssensor auf jeden Fall an. Nutze 15, wenn du unsicher bist.",
@@ -88,12 +92,12 @@
       },
       "control_state": {
         "title": "Eine Steuerung einrichten",
-        "description": "Steuerung {control_number} von {control_total}: **{control_name}** (`{control_entity_id}`).\n\nBringe das echte Ding in den Zustand, der Anwesenheit halten soll. Schließe die Tür, schalte den Fernseher ein, starte das Gerät oder schalte den Helfer ein. Home Assistant sagt, dass diese Entität gerade `{current_state}` ist.\n\nWähle den Wert, den sie anzeigt, wenn Anwesenheit gehalten werden soll.",
+        "description": "Steuerung {control_number} von {control_total}: **{control_name}** (`{control_entity_id}`).\n\nBringe das echte Gerät in einen Zustand, der die Anwesenheit aufrechterhalten soll. Schließe die Tür, starte oder pausiere den Fernseher, starte das Gerät oder schalte den Helfer ein. Home Assistant meldet derzeit den Zustand `{current_state}`.\n\nWähle alle Zustände aus, die die Anwesenheit aufrechterhalten sollen.",
         "data": {
-          "control_active_state": "Welcher Wert bedeutet geschlossen/aktiv?"
+          "control_active_state": "Welche Zustände bedeuten geschlossen/aktiv?"
         },
         "data_description": {
-          "control_active_state": "Wähle On, wenn die Entität on sagt, während sie Anwesenheit halten soll. Wähle Off, wenn sie off sagt, während sie Anwesenheit halten soll."
+          "control_active_state": "Wähle einen oder mehrere Zustände. Ein Mediaplayer kann die Anwesenheit zum Beispiel während Wiedergabe oder Pause aufrechterhalten."
         }
       },
       "motion_cooldown": {
@@ -109,14 +113,23 @@
     },
     "error": {
       "no_controls": "Wähle mindestens eine Steuerung aus.",
-      "no_motions": "Wähle mindestens einen Bewegungssensor aus."
+      "no_motions": "Wähle mindestens einen Bewegungssensor aus.",
+      "same_source_roles": "Wähle nicht dieselbe Entität gleichzeitig als Steuerung und Bewegungssensor aus.",
+      "self_reference": "Der erstellte Anwesenheitssensor kann sich nicht selbst als Quelle verwenden.",
+      "presence_cycle": "Ein Anwesenheitssensor kann nicht über einen anderen Advanced-Presence-Detection-Helfer von sich selbst abhängen.",
+      "no_active_states": "Wähle mindestens einen geschlossenen/aktiven Zustand aus."
     }
   },
   "selector": {
     "control_active_state": {
       "options": {
-        "on": "On bedeutet geschlossen/aktiv",
-        "off": "Off bedeutet geschlossen/aktiv"
+        "on": "Ein bedeutet geschlossen/aktiv",
+        "off": "Aus bedeutet geschlossen/aktiv",
+        "playing": "Wiedergabe bedeutet geschlossen/aktiv",
+        "paused": "Pausiert bedeutet geschlossen/aktiv",
+        "buffering": "Puffern bedeutet geschlossen/aktiv",
+        "idle": "Inaktiv bedeutet geschlossen/aktiv",
+        "standby": "Standby bedeutet geschlossen/aktiv"
       }
     },
     "control_closed_mode": {
@@ -130,6 +143,12 @@
         "mark_unavailable": "Diesen Anwesenheitssensor nicht verfügbar machen",
         "treat_inactive": "Nicht verfügbare Quellen als inaktiv/aus behandeln"
       }
+    }
+  },
+  "issues": {
+    "missing_source_entities": {
+      "title": "Quellentitäten fehlen",
+      "description": "Der Helfer **{helper_name}** verweist auf Entitäten, die nicht mehr existieren: {entities}. Öffne **Einstellungen > Geräte & Dienste > Helfer**, bearbeite diesen Helfer und wähle Ersatzsteuerungen oder Bewegungssensoren aus."
     }
   }
 }

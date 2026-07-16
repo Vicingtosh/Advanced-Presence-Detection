@@ -19,7 +19,7 @@
         },
         "data_description": {
           "name": "The name Home Assistant will show for the new presence sensor.",
-          "door_entities": "Pick every binary sensor, switch, input boolean, or fan that should control presence holding. Examples: a closed door, a TV that is on, an appliance that is running, a helper, or a fan.",
+          "door_entities": "Pick every binary sensor, switch, input boolean, fan, light, remote, or media player that should control presence holding. Examples: a closed door, a TV that is playing, an appliance that is running, a helper, or a fan.",
           "motion_entities": "Pick every motion sensor that can see movement in this room or area.",
           "default_cooldown": "Seconds. This is the starting value for each motion sensor. You can adjust each one later. The timer starts when the selected controls become closed/active.",
           "fresh_window": "Seconds. After the controls open or become closed/active, keep the presence sensor on no matter what. Use 15 if you are not sure.",
@@ -32,12 +32,12 @@
       },
       "control_state": {
         "title": "Teach one control",
-        "description": "Control {control_number} of {control_total}: **{control_name}** (`{control_entity_id}`).\n\nPut the real thing in the state that should hold presence. Close the door, turn the TV on, start the appliance, or turn the helper on. Home Assistant says this entity is currently `{current_state}`.\n\nChoose the value it shows while it should hold presence.",
+        "description": "Control {control_number} of {control_total}: **{control_name}** (`{control_entity_id}`).\n\nPut the real thing in a state that should hold presence. Close the door, play or pause the TV, start the appliance, or turn the helper on. Home Assistant says this entity is currently `{current_state}`.\n\nChoose every state that should hold presence.",
         "data": {
-          "control_active_state": "Which value means closed/active?"
+          "control_active_state": "Which states mean closed/active?"
         },
         "data_description": {
-          "control_active_state": "Choose On if the entity says on while it should hold presence. Choose Off if it says off while it should hold presence."
+          "control_active_state": "Select one or more states. For example, a media player can hold presence while Playing or Paused."
         }
       },
       "motion_cooldown": {
@@ -53,7 +53,11 @@
     },
     "error": {
       "no_controls": "Select at least one control.",
-      "no_motions": "Select at least one motion sensor."
+      "no_motions": "Select at least one motion sensor.",
+      "same_source_roles": "Do not select the same entity as both a control and a motion sensor.",
+      "self_reference": "The generated presence sensor cannot use itself as a source.",
+      "presence_cycle": "A presence sensor cannot depend on itself through another Advanced Presence Detection helper.",
+      "no_active_states": "Select at least one closed/active state."
     }
   },
   "options": {
@@ -75,7 +79,7 @@
         },
         "data_description": {
           "name": "The name Home Assistant shows for the presence sensor.",
-          "door_entities": "Pick every binary sensor, switch, input boolean, or fan that should control presence holding. Examples: a closed door, a TV that is on, an appliance that is running, a helper, or a fan.",
+          "door_entities": "Pick every binary sensor, switch, input boolean, fan, light, remote, or media player that should control presence holding. Examples: a closed door, a TV that is playing, an appliance that is running, a helper, or a fan.",
           "motion_entities": "Pick every motion sensor that can see movement in this room or area.",
           "default_cooldown": "Seconds. This is the starting value for newly added motion sensors. Existing sensors keep their saved values unless you change them on the next screens.",
           "fresh_window": "Seconds. After the controls open or become closed/active, keep the presence sensor on no matter what. Use 15 if you are not sure.",
@@ -88,12 +92,12 @@
       },
       "control_state": {
         "title": "Teach one control",
-        "description": "Control {control_number} of {control_total}: **{control_name}** (`{control_entity_id}`).\n\nPut the real thing in the state that should hold presence. Close the door, turn the TV on, start the appliance, or turn the helper on. Home Assistant says this entity is currently `{current_state}`.\n\nChoose the value it shows while it should hold presence.",
+        "description": "Control {control_number} of {control_total}: **{control_name}** (`{control_entity_id}`).\n\nPut the real thing in a state that should hold presence. Close the door, play or pause the TV, start the appliance, or turn the helper on. Home Assistant says this entity is currently `{current_state}`.\n\nChoose every state that should hold presence.",
         "data": {
-          "control_active_state": "Which value means closed/active?"
+          "control_active_state": "Which states mean closed/active?"
         },
         "data_description": {
-          "control_active_state": "Choose On if the entity says on while it should hold presence. Choose Off if it says off while it should hold presence."
+          "control_active_state": "Select one or more states. For example, a media player can hold presence while Playing or Paused."
         }
       },
       "motion_cooldown": {
@@ -109,14 +113,29 @@
     },
     "error": {
       "no_controls": "Select at least one control.",
-      "no_motions": "Select at least one motion sensor."
+      "no_motions": "Select at least one motion sensor.",
+      "same_source_roles": "Do not select the same entity as both a control and a motion sensor.",
+      "self_reference": "The generated presence sensor cannot use itself as a source.",
+      "presence_cycle": "A presence sensor cannot depend on itself through another Advanced Presence Detection helper.",
+      "no_active_states": "Select at least one closed/active state."
+    }
+  },
+  "issues": {
+    "missing_source_entities": {
+      "title": "Source entities are missing",
+      "description": "The helper **{helper_name}** refers to entities that no longer exist: {entities}. Open **Settings > Devices & services > Helpers**, edit this helper, and select replacement controls or motion sensors."
     }
   },
   "selector": {
     "control_active_state": {
       "options": {
         "on": "On means closed/active",
-        "off": "Off means closed/active"
+        "off": "Off means closed/active",
+        "playing": "Playing means closed/active",
+        "paused": "Paused means closed/active",
+        "buffering": "Buffering means closed/active",
+        "idle": "Idle means closed/active",
+        "standby": "Standby means closed/active"
       }
     },
     "control_closed_mode": {

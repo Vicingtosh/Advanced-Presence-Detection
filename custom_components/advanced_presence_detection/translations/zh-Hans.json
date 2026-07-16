@@ -19,7 +19,7 @@
         },
         "data_description": {
           "name": "Home Assistant 将为新的存在传感器显示的名称。",
-          "door_entities": "选择每个应保持存在状态的 binary sensor、switch、input boolean 或 fan。例如：关闭的门、打开的电视、正在运行的电器、助手或风扇。",
+          "door_entities": "选择每个应保持存在状态的二进制传感器、开关、输入布尔、风扇、灯、遥控器或媒体播放器。例如：关闭的门、正在播放的电视、正在运行的设备、助手或风扇。",
           "motion_entities": "选择每个能在此房间或区域检测到运动的运动传感器。",
           "default_cooldown": "秒。这是每个运动传感器的初始值。之后可以单独调整。计时器会在选定控制实体变为关闭/活动时开始。",
           "fresh_window": "秒。在控制实体打开或变为关闭/活动之后，无论如何都让存在传感器保持开启。如果不确定，请使用 15。",
@@ -32,12 +32,12 @@
       },
       "control_state": {
         "title": "设置一个控制实体",
-        "description": "控制实体 {control_number}/{control_total}：**{control_name}** (`{control_entity_id}`)。\n\n请把实际设备置于应保持存在的状态。关门、打开电视、启动电器或打开助手。Home Assistant 当前显示此实体为 `{current_state}`。\n\n请选择它在应保持存在时显示的值。",
+        "description": "控制实体 {control_number}/{control_total}：**{control_name}** (`{control_entity_id}`)。\n\n请将实际设备置于应保持存在的状态。关门、播放或暂停电视、启动设备或打开助手。Home Assistant 当前显示此实体为 `{current_state}`。\n\n请选择所有应保持存在的状态。",
         "data": {
-          "control_active_state": "哪个值表示关闭/活动？"
+          "control_active_state": "哪些状态表示关闭/活动？"
         },
         "data_description": {
-          "control_active_state": "如果实体在应保持存在时显示 on，请选择 On。如果显示 off，请选择 Off。"
+          "control_active_state": "请选择一个或多个状态。例如，媒体播放器可以在播放或暂停时保持存在状态。"
         }
       },
       "motion_cooldown": {
@@ -53,7 +53,11 @@
     },
     "error": {
       "no_controls": "请至少选择一个控制实体。",
-      "no_motions": "请至少选择一个运动传感器。"
+      "no_motions": "请至少选择一个运动传感器。",
+      "same_source_roles": "不要同时将同一个实体选作控制实体和运动传感器。",
+      "self_reference": "创建的存在传感器不能将自身用作来源。",
+      "presence_cycle": "存在传感器不能通过另一个 Advanced Presence Detection 助手间接依赖自身。",
+      "no_active_states": "请至少选择一个关闭/活动状态。"
     }
   },
   "options": {
@@ -75,7 +79,7 @@
         },
         "data_description": {
           "name": "Home Assistant 为此存在传感器显示的名称。",
-          "door_entities": "选择每个应保持存在状态的 binary sensor、switch、input boolean 或 fan。例如：关闭的门、打开的电视、正在运行的电器、助手或风扇。",
+          "door_entities": "选择每个应保持存在状态的二进制传感器、开关、输入布尔、风扇、灯、遥控器或媒体播放器。例如：关闭的门、正在播放的电视、正在运行的设备、助手或风扇。",
           "motion_entities": "选择每个能在此房间或区域检测到运动的运动传感器。",
           "default_cooldown": "秒。这是新添加运动传感器的初始值。现有传感器会保留已保存的值，除非你在后续页面更改它们。",
           "fresh_window": "秒。在控制实体打开或变为关闭/活动之后，无论如何都让存在传感器保持开启。如果不确定，请使用 15。",
@@ -88,12 +92,12 @@
       },
       "control_state": {
         "title": "设置一个控制实体",
-        "description": "控制实体 {control_number}/{control_total}：**{control_name}** (`{control_entity_id}`)。\n\n请把实际设备置于应保持存在的状态。关门、打开电视、启动电器或打开助手。Home Assistant 当前显示此实体为 `{current_state}`。\n\n请选择它在应保持存在时显示的值。",
+        "description": "控制实体 {control_number}/{control_total}：**{control_name}** (`{control_entity_id}`)。\n\n请将实际设备置于应保持存在的状态。关门、播放或暂停电视、启动设备或打开助手。Home Assistant 当前显示此实体为 `{current_state}`。\n\n请选择所有应保持存在的状态。",
         "data": {
-          "control_active_state": "哪个值表示关闭/活动？"
+          "control_active_state": "哪些状态表示关闭/活动？"
         },
         "data_description": {
-          "control_active_state": "如果实体在应保持存在时显示 on，请选择 On。如果显示 off，请选择 Off。"
+          "control_active_state": "请选择一个或多个状态。例如，媒体播放器可以在播放或暂停时保持存在状态。"
         }
       },
       "motion_cooldown": {
@@ -109,14 +113,23 @@
     },
     "error": {
       "no_controls": "请至少选择一个控制实体。",
-      "no_motions": "请至少选择一个运动传感器。"
+      "no_motions": "请至少选择一个运动传感器。",
+      "same_source_roles": "不要同时将同一个实体选作控制实体和运动传感器。",
+      "self_reference": "创建的存在传感器不能将自身用作来源。",
+      "presence_cycle": "存在传感器不能通过另一个 Advanced Presence Detection 助手间接依赖自身。",
+      "no_active_states": "请至少选择一个关闭/活动状态。"
     }
   },
   "selector": {
     "control_active_state": {
       "options": {
-        "on": "On 表示关闭/活动",
-        "off": "Off 表示关闭/活动"
+        "on": "开启表示关闭/活动",
+        "off": "关闭表示关闭/活动",
+        "playing": "播放表示关闭/活动",
+        "paused": "暂停表示关闭/活动",
+        "buffering": "缓冲表示关闭/活动",
+        "idle": "空闲表示关闭/活动",
+        "standby": "待机表示关闭/活动"
       }
     },
     "control_closed_mode": {
@@ -130,6 +143,12 @@
         "mark_unavailable": "将此存在传感器标记为不可用",
         "treat_inactive": "将不可用来源视为非活动/关闭"
       }
+    }
+  },
+  "issues": {
+    "missing_source_entities": {
+      "title": "缺少来源实体",
+      "description": "助手 **{helper_name}** 引用了已不存在的实体：{entities}。请打开 **设置 > 设备与服务 > 助手**，编辑此助手并选择替代的控制实体或运动传感器。"
     }
   }
 }

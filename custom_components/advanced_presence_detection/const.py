@@ -19,7 +19,15 @@ CONF_CONTROL_CLOSED_MODE = "control_closed_mode"
 CONF_UNAVAILABLE_BEHAVIOR = "unavailable_behavior"
 CONF_SHOW_DEBUG_ATTRIBUTES = "show_debug_attributes"
 
-CONTROL_ENTITY_DOMAINS = ("binary_sensor", "switch", "input_boolean", "fan")
+CONTROL_ENTITY_DOMAINS = (
+    "binary_sensor",
+    "switch",
+    "input_boolean",
+    "fan",
+    "light",
+    "remote",
+    "media_player",
+)
 
 DEFAULT_NAME = "Advanced Presence Detection"
 DEFAULT_COOLDOWN = 180

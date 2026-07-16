@@ -4,6 +4,7 @@
 [![Release][release-shield]][releases]
 [![Validate HACS][hacs-action-shield]][hacs-action]
 [![Hassfest][hassfest-shield]][hassfest-action]
+[![Tests][tests-shield]][tests-action]
 [![License][license-shield]][license]
 
 <!-- Optional badges for later:
@@ -19,20 +20,23 @@ It is built for rooms where motion alone is not reliable. A normal motion sensor
 
 This integration combines motion sensors with one or more **controls**. A control is an entity that helps confirm that presence should stay on. Common examples are door contacts, switches, helpers, appliance status sensors, TV activity helpers, bed sensors, or anything else that indicates someone is probably still there.
 
-Controls can be `binary_sensor`, `switch`, `input_boolean`, or `fan` entities. If another entity type exposes useful activity, you can usually connect it through a helper or template entity.
+Controls can be `binary_sensor`, `switch`, `input_boolean`, `fan`, `light`, `remote`, or `media_player` entities. If another entity type exposes useful activity, you can connect it through a helper or template entity.
 
 ## Features
 
 * Creates one calculated presence binary sensor.
 * Supports one or more motion sensors.
 * Supports one or more controls.
-* Controls can be `binary_sensor`, `switch`, `input_boolean`, or `fan` entities.
-* Each control can use `on` or `off` as its active state.
+* Controls can be `binary_sensor`, `switch`, `input_boolean`, `fan`, `light`, `remote`, or `media_player` entities.
+* Each control can use one or more active states, such as `on`, `playing`, or `paused`.
 * The control group can require **all controls active** or **any control active**.
 * Each motion sensor can have its own cooldown.
 * Grace time keeps presence on while a control changes state.
 * Optional no-motion timeout while controls are active.
 * Optional no-motion delay while controls are not active.
+* Latches and active timers resume safely after a reload or restart.
+* Missing source entities create a Home Assistant Repair warning.
+* Downloadable, privacy-conscious diagnostics are available.
 * Troubleshooting attributes show how the sensor reached its current state.
 
 ## Installation With HACS
@@ -62,7 +66,7 @@ The integration is configured through the Home Assistant UI.
 You choose:
 
 * **Presence sensor name:** the name of the new presence sensor.
-* **Controls:** doors, switches, helpers, appliance status entities, or other entities that help keep presence on.
+* **Controls:** doors, switches, helpers, fans, lights, remotes, media players, appliance status entities, or other entities that help keep presence on.
 * **Motion sensors:** the sensors that detect movement.
 * **Starting motion cooldown in seconds:** the default cooldown for motion sensors.
 * **Control change grace time in seconds:** how long presence should stay on while a control changes state.
@@ -72,7 +76,7 @@ You choose:
 * **Inactive no-motion delay in minutes:** how long presence may stay on after motion stops while controls are inactive.
 * **Show debug attributes:** exposes detailed source, timer, cooldown, and evaluation data. It is off by default.
 
-For each control, the setup page shows the friendly name, entity id, and current state. Put the real device in the state that should keep presence on, then choose whether Home Assistant shows that state as `on` or `off`.
+For each control, the setup page shows the friendly name, entity id, and current state. Put the real device in a useful state, then select every state that should keep presence on. A media player can, for example, use both `playing` and `paused`.
 
 For each motion sensor, set the cooldown that matches that sensor. The cooldown starts when the controls become active.
 
@@ -88,12 +92,12 @@ If motion turns off before the cooldown has passed, presence turns off unless it
 
 ## Examples
 
-* **Watching TV:** use the TV state, media activity, or a helper as a control. Set `on` as active and choose **Any**, so presence stays on while someone is watching.
+* **Watching TV:** select the media player directly and use `playing` and `paused` as active states. Choose **Any**, so presence stays on while someone is watching.
 * **Bathroom or toilet:** use the door contact as a control. Set the closed-door state as active, then set a no-motion timeout so presence cannot stay on forever.
 * **Kitchen:** combine motion with an extractor fan, oven helper, coffee machine, or other kitchen activity switch.
 * **Home office:** use a monitor, PC, desk lamp, or meeting helper so presence stays on during calls or focused work.
 * **Laundry room:** use a washer or dryer status helper so presence can stay active while a task is running.
-* **Garage or workshop:** combine a door contact with a workbench light, tool outlet, or ventilation switch.
+* **Garage or workshop:** combine a door contact with a workbench light, remote-controlled equipment, tool outlet, or ventilation switch.
 * **Bedroom:** use a closed door, reading lamp, bed sensor, or sleep-mode helper.
 * **Media or gaming area:** use a console, projector, amplifier, or scene helper.
 
@@ -107,6 +111,8 @@ Open the generated presence entity in Home Assistant and look at its attributes.
 * `unavailable_entities`
 
 Enable **Show debug attributes** in the helper options when detailed diagnostics are needed.
+
+You can also download a diagnostics file from the helper's device page. Entity names and selected source identifiers are redacted. If a configured source entity is deleted, Home Assistant creates a Repair warning naming the helper that needs attention.
 
 Detailed attributes include:
 
@@ -130,7 +136,7 @@ Detailed attributes include:
 * `unavailable_behavior`
 * `pending_confirmation_sensors`
 
-If a control behaves the wrong way around, check `control_evaluations`. It shows the friendly name, raw state, configured active state, and whether the integration currently sees the control as active.
+If a control behaves the wrong way around, check `control_evaluations`. It shows the friendly name, raw state, configured active states, and whether the integration currently sees the control as active.
 
 If cooldown behavior looks wrong, check `motion_evaluations`. It shows each motion sensor's raw state, cooldown, remaining cooldown time, and pending confirmation state.
 
@@ -147,3 +153,5 @@ If cooldown behavior looks wrong, check `motion_evaluations`. It shows each moti
 [license-shield]: https://img.shields.io/github/license/Vicingtosh/Advanced-Presence-Detection?style=for-the-badge
 [release-shield]: https://img.shields.io/github/v/release/Vicingtosh/Advanced-Presence-Detection?style=for-the-badge
 [releases]: https://github.com/Vicingtosh/Advanced-Presence-Detection/releases
+[tests-action]: https://github.com/Vicingtosh/Advanced-Presence-Detection/actions/workflows/tests.yml
+[tests-shield]: https://img.shields.io/github/actions/workflow/status/Vicingtosh/Advanced-Presence-Detection/tests.yml?branch=main&label=Tests&style=for-the-badge

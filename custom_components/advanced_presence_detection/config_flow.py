@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant import config_entries
-from homeassistant.const import STATE_OFF, STATE_ON
+from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 
 from .const import (
@@ -24,11 +24,11 @@ from .const import (
     CONF_OPEN_NO_MOTION_TIMEOUT,
     CONF_SHOW_DEBUG_ATTRIBUTES,
     CONF_UNAVAILABLE_BEHAVIOR,
-    CONTROL_ENTITY_DOMAINS,
     CONTROL_CLOSED_MODE_ALL,
     CONTROL_CLOSED_MODE_ANY,
-    DEFAULT_COOLDOWN,
+    CONTROL_ENTITY_DOMAINS,
     DEFAULT_CONTROL_CLOSED_MODE,
+    DEFAULT_COOLDOWN,
     DEFAULT_FRESH_WINDOW,
     DEFAULT_NAME,
     DEFAULT_NO_MOTION_TIMEOUT,
@@ -45,39 +45,26 @@ from .const import (
     UNAVAILABLE_BEHAVIOR_MARK_UNAVAILABLE,
     UNAVAILABLE_BEHAVIOR_TREAT_INACTIVE,
 )
+from .source_graph import normalise_entity_ids, source_ids_causing_cycle
 
 FIELD_CONTROL_ACTIVE_STATE = "control_active_state"
 FIELD_MOTION_COOLDOWN = "motion_cooldown"
 FIELD_NO_MOTION_TIMEOUT_MINUTES = "no_motion_timeout_minutes"
 FIELD_OPEN_NO_MOTION_TIMEOUT_MINUTES = "open_no_motion_timeout_minutes"
-OPEN_STATE_CHOICES = [STATE_ON, STATE_OFF]
+DEFAULT_CONTROL_STATE_CHOICES = [STATE_ON, STATE_OFF]
+MEDIA_PLAYER_STATE_CHOICES = [
+    "playing",
+    "paused",
+    "buffering",
+    "idle",
+    STATE_ON,
+    STATE_OFF,
+]
 CLOSED_MODE_CHOICES = [CONTROL_CLOSED_MODE_ALL, CONTROL_CLOSED_MODE_ANY]
 UNAVAILABLE_BEHAVIOR_CHOICES = [
     UNAVAILABLE_BEHAVIOR_MARK_UNAVAILABLE,
     UNAVAILABLE_BEHAVIOR_TREAT_INACTIVE,
 ]
-
-
-def _entity_ids(value: Any, allowed_domains: set[str]) -> list[str]:
-    """Return valid entity ids from selector data."""
-    if value is None:
-        return []
-    if isinstance(value, str):
-        candidates = [value]
-    else:
-        try:
-            candidates = list(value)
-        except TypeError:
-            return []
-
-    entity_ids: list[str] = []
-    for candidate in candidates:
-        entity_id = str(candidate)
-        domain, separator, _object_id = entity_id.partition(".")
-        if separator and domain in allowed_domains:
-            entity_ids.append(entity_id)
-
-    return entity_ids
 
 
 def _bounded_int(
@@ -89,7 +76,7 @@ def _bounded_int(
     """Return an integer limited to the allowed range."""
     try:
         number = int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return default
 
     return max(lower, min(upper, number))
@@ -99,7 +86,7 @@ def _bounded_minutes_from_seconds(value: Any, default_seconds: int) -> int:
     """Return stored seconds as bounded whole minutes."""
     try:
         seconds = int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         seconds = default_seconds
 
     return _bounded_int(
@@ -107,6 +94,70 @@ def _bounded_minutes_from_seconds(value: Any, default_seconds: int) -> int:
         int(default_seconds / 60),
         MIN_TIMEOUT_MINUTES,
         MAX_TIMEOUT_MINUTES,
+    )
+
+
+def _normalise_active_states(
+    value: Any,
+    *,
+    fallback_to_on: bool = True,
+) -> list[str]:
+    """Return active states from old single-state or new list config data."""
+    if isinstance(value, str):
+        candidates = [value]
+    else:
+        try:
+            candidates = list(value)
+        except TypeError:
+            candidates = []
+
+    states: list[str] = []
+    for candidate in candidates:
+        state = str(candidate)
+        if (
+            state
+            and state not in (STATE_UNKNOWN, STATE_UNAVAILABLE)
+            and state not in states
+        ):
+            states.append(state)
+    if states:
+        return states
+    return [STATE_ON] if fallback_to_on else []
+
+
+def _default_active_states(hass: HomeAssistant, entity_id: str) -> list[str]:
+    """Use the entity's current usable state as the friendly default."""
+    state = hass.states.get(entity_id)
+    if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+        return [STATE_ON]
+    return (
+        [state.state]
+        if state.state in _control_state_choices(hass, entity_id)
+        else [STATE_ON]
+    )
+
+
+def _control_state_choices(hass: HomeAssistant, entity_id: str) -> list[str]:
+    """Return useful choices for one control, including its current state."""
+    domain = entity_id.partition(".")[0]
+    choices = (
+        MEDIA_PLAYER_STATE_CHOICES
+        if domain == "media_player"
+        else DEFAULT_CONTROL_STATE_CHOICES
+    )
+    current_state = _entity_current_state(hass, entity_id)
+    return list(
+        dict.fromkeys(
+            [
+                *choices,
+                *(
+                    []
+                    if current_state
+                    in ("not available", STATE_UNKNOWN, STATE_UNAVAILABLE)
+                    else [current_state]
+                ),
+            ]
+        )
     )
 
 
@@ -155,11 +206,11 @@ def _normalise_base_input(user_input: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "name": str(user_input.get("name", DEFAULT_NAME)).strip() or DEFAULT_NAME,
-        CONF_CONTROL_ENTITIES: _entity_ids(
+        CONF_CONTROL_ENTITIES: normalise_entity_ids(
             user_input.get(CONF_CONTROL_ENTITIES),
             set(CONTROL_ENTITY_DOMAINS),
         ),
-        CONF_MOTION_ENTITIES: _entity_ids(
+        CONF_MOTION_ENTITIES: normalise_entity_ids(
             user_input.get(CONF_MOTION_ENTITIES),
             {"binary_sensor"},
         ),
@@ -187,6 +238,40 @@ def _normalise_base_input(user_input: dict[str, Any]) -> dict[str, Any]:
             is True
         ),
     }
+
+
+def _source_selection_errors(
+    hass: HomeAssistant,
+    base: dict[str, Any],
+    own_entity_id: str | None = None,
+    own_entry_id: str | None = None,
+) -> dict[str, str]:
+    """Return errors for source combinations that can create feedback."""
+    errors: dict[str, str] = {}
+    controls = set(base[CONF_CONTROL_ENTITIES])
+    motions = set(base[CONF_MOTION_ENTITIES])
+
+    if controls & motions:
+        errors[CONF_CONTROL_ENTITIES] = "same_source_roles"
+        errors[CONF_MOTION_ENTITIES] = "same_source_roles"
+
+    if own_entity_id in controls:
+        errors[CONF_CONTROL_ENTITIES] = "self_reference"
+    if own_entity_id in motions:
+        errors[CONF_MOTION_ENTITIES] = "self_reference"
+
+    if own_entry_id is not None:
+        cyclic_sources = source_ids_causing_cycle(
+            hass,
+            own_entry_id,
+            [*controls, *motions],
+        )
+        if controls & cyclic_sources:
+            errors.setdefault(CONF_CONTROL_ENTITIES, "presence_cycle")
+        if motions & cyclic_sources:
+            errors.setdefault(CONF_MOTION_ENTITIES, "presence_cycle")
+
+    return errors
 
 
 def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
@@ -309,19 +394,26 @@ def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     )
 
 
-def _control_active_state_schema(default_active_state: str) -> vol.Schema:
-    """Return the one-control active state schema."""
-    if default_active_state not in OPEN_STATE_CHOICES:
-        default_active_state = STATE_ON
+def _control_active_state_schema(
+    hass: HomeAssistant,
+    entity_id: str,
+    default_active_states: Any,
+) -> vol.Schema:
+    """Return the one-control active states schema."""
+    active_states = _normalise_active_states(default_active_states)
+    choices = list(
+        dict.fromkeys([*_control_state_choices(hass, entity_id), *active_states])
+    )
 
     return vol.Schema(
         {
             vol.Required(
                 FIELD_CONTROL_ACTIVE_STATE,
-                default=default_active_state,
+                default=active_states,
             ): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=OPEN_STATE_CHOICES,
+                    options=choices,
+                    multiple=True,
                     mode=selector.SelectSelectorMode.DROPDOWN,
                     translation_key=FIELD_CONTROL_ACTIVE_STATE,
                 )
@@ -399,86 +491,97 @@ def _motion_placeholders(
     }
 
 
-class AdvancedPresenceDetectionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Advanced Presence Detection."""
+class _AdvancedPresenceDetectionWizard:
+    """Shared control and motion setup wizard."""
 
-    VERSION = 1
-
-    def __init__(self) -> None:
-        """Initialize the flow."""
+    def _initialize_wizard(self) -> None:
+        """Initialize shared wizard state."""
         self._pending_base: dict[str, Any] = {}
+        self._existing_cooldowns: dict[str, Any] = {}
         self._control_index = 0
         self._motion_index = 0
 
-    @staticmethod
-    @callback
-    def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,
-    ) -> config_entries.OptionsFlow:
-        """Create the options flow."""
-        return AdvancedPresenceDetectionOptionsFlow()
-
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle the initial step."""
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            base = _normalise_base_input(user_input)
-
-            if not base[CONF_CONTROL_ENTITIES]:
-                errors[CONF_CONTROL_ENTITIES] = "no_controls"
-            if not base[CONF_MOTION_ENTITIES]:
-                errors[CONF_MOTION_ENTITIES] = "no_motions"
-
-            if not errors:
-                self._pending_base = base
-                self._pending_base[CONF_CONTROL_ACTIVE_STATES] = {
-                    entity_id: STATE_ON for entity_id in base[CONF_CONTROL_ENTITIES]
-                }
-                self._control_index = 0
-                return await self.async_step_control_state()
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=_base_schema(),
-            errors=errors,
+    def _begin_wizard(
+        self,
+        base: dict[str, Any],
+        current: dict[str, Any] | None = None,
+    ) -> None:
+        """Prepare shared wizard state using any existing per-entity settings."""
+        current = current or {}
+        existing_active_states = current.get(CONF_CONTROL_ACTIVE_STATES, {})
+        if not isinstance(existing_active_states, dict):
+            existing_active_states = {}
+        existing_cooldowns = current.get(CONF_MOTION_COOLDOWNS, {})
+        self._existing_cooldowns = (
+            existing_cooldowns if isinstance(existing_cooldowns, dict) else {}
         )
+
+        self._pending_base = base
+        self._pending_base[CONF_CONTROL_ACTIVE_STATES] = {
+            entity_id: _normalise_active_states(
+                existing_active_states.get(
+                    entity_id,
+                    _default_active_states(self.hass, entity_id),
+                )
+            )
+            for entity_id in base[CONF_CONTROL_ENTITIES]
+        }
+        self._control_index = 0
+        self._motion_index = 0
 
     async def async_step_control_state(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Ask which state means active for each control entity."""
+        """Ask which states mean active for each control entity."""
         control_entities: list[str] = self._pending_base[CONF_CONTROL_ENTITIES]
         entity_id = control_entities[self._control_index]
+        errors: dict[str, str] = {}
 
         if user_input is not None:
-            self._pending_base[CONF_CONTROL_ACTIVE_STATES][entity_id] = str(
-                user_input[FIELD_CONTROL_ACTIVE_STATE]
+            active_states = _normalise_active_states(
+                user_input[FIELD_CONTROL_ACTIVE_STATE],
+                fallback_to_on=False,
             )
-            self._control_index += 1
+            if not active_states:
+                errors[FIELD_CONTROL_ACTIVE_STATE] = "no_active_states"
+            else:
+                self._pending_base[CONF_CONTROL_ACTIVE_STATES][entity_id] = (
+                    active_states
+                )
+                self._control_index += 1
 
-            if self._control_index >= len(control_entities):
+            if not errors and self._control_index >= len(control_entities):
                 default_cooldown = self._pending_base[CONF_DEFAULT_COOLDOWN]
                 self._pending_base[CONF_MOTION_COOLDOWNS] = {
-                    motion_entity_id: default_cooldown
+                    motion_entity_id: _bounded_int(
+                        self._existing_cooldowns.get(
+                            motion_entity_id, default_cooldown
+                        ),
+                        default_cooldown,
+                        MIN_COOLDOWN,
+                        MAX_COOLDOWN,
+                    )
                     for motion_entity_id in self._pending_base[CONF_MOTION_ENTITIES]
                 }
-                self._motion_index = 0
                 return await self.async_step_motion_cooldown()
 
-            entity_id = control_entities[self._control_index]
+            if not errors:
+                entity_id = control_entities[self._control_index]
 
-        default_active_state = self._pending_base[CONF_CONTROL_ACTIVE_STATES].get(
-            entity_id, STATE_ON
+        default_active_states = self._pending_base[CONF_CONTROL_ACTIVE_STATES].get(
+            entity_id, [STATE_ON]
         )
         return self.async_show_form(
             step_id="control_state",
-            data_schema=_control_active_state_schema(default_active_state),
+            data_schema=_control_active_state_schema(
+                self.hass,
+                entity_id,
+                default_active_states,
+            ),
             description_placeholders=_control_placeholders(
                 self.hass, control_entities, self._control_index
             ),
+            errors=errors,
         )
 
     async def async_step_motion_cooldown(
@@ -498,8 +601,7 @@ class AdvancedPresenceDetectionConfigFlow(config_entries.ConfigFlow, domain=DOMA
             self._motion_index += 1
 
             if self._motion_index >= len(motion_entities):
-                data = dict(self._pending_base)
-                return self.async_create_entry(title=data["name"], data=data)
+                return await self._async_finish_wizard(dict(self._pending_base))
 
             entity_id = motion_entities[self._motion_index]
 
@@ -514,15 +616,71 @@ class AdvancedPresenceDetectionConfigFlow(config_entries.ConfigFlow, domain=DOMA
             ),
         )
 
+    async def _async_finish_wizard(self, data: dict[str, Any]) -> FlowResult:
+        """Finish a config or options flow."""
+        raise NotImplementedError
 
-class AdvancedPresenceDetectionOptionsFlow(config_entries.OptionsFlowWithReload):
+
+class AdvancedPresenceDetectionConfigFlow(
+    _AdvancedPresenceDetectionWizard,
+    config_entries.ConfigFlow,
+    domain=DOMAIN,
+):
+    """Handle a config flow for Advanced Presence Detection."""
+
+    VERSION = 1
+
+    def __init__(self) -> None:
+        """Initialize the flow."""
+        super().__init__()
+        self._initialize_wizard()
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Create the options flow."""
+        return AdvancedPresenceDetectionOptionsFlow()
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the initial step."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            base = _normalise_base_input(user_input)
+            if not base[CONF_CONTROL_ENTITIES]:
+                errors[CONF_CONTROL_ENTITIES] = "no_controls"
+            if not base[CONF_MOTION_ENTITIES]:
+                errors[CONF_MOTION_ENTITIES] = "no_motions"
+            errors.update(_source_selection_errors(self.hass, base))
+            if not errors:
+                self._begin_wizard(base)
+                return await self.async_step_control_state()
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=_base_schema(),
+            errors=errors,
+        )
+
+    async def _async_finish_wizard(self, data: dict[str, Any]) -> FlowResult:
+        """Create the configured helper."""
+        return self.async_create_entry(title=data["name"], data=data)
+
+
+class AdvancedPresenceDetectionOptionsFlow(
+    _AdvancedPresenceDetectionWizard,
+    config_entries.OptionsFlowWithReload,
+):
     """Handle options for Advanced Presence Detection."""
 
     def __init__(self) -> None:
         """Initialize options flow."""
-        self._pending_base: dict[str, Any] = {}
-        self._control_index = 0
-        self._motion_index = 0
+        super().__init__()
+        self._initialize_wizard()
 
     def _current_config(self) -> dict[str, Any]:
         """Return current config with options overriding data."""
@@ -537,22 +695,26 @@ class AdvancedPresenceDetectionOptionsFlow(config_entries.OptionsFlowWithReload)
 
         if user_input is not None:
             base = _normalise_base_input(user_input)
-
             if not base[CONF_CONTROL_ENTITIES]:
                 errors[CONF_CONTROL_ENTITIES] = "no_controls"
             if not base[CONF_MOTION_ENTITIES]:
                 errors[CONF_MOTION_ENTITIES] = "no_motions"
-
-            if not errors:
-                existing_active_states: dict[str, str] = current.get(
-                    CONF_CONTROL_ACTIVE_STATES, {}
+            registry = er.async_get(self.hass)
+            own_entity_id = registry.async_get_entity_id(
+                "binary_sensor",
+                DOMAIN,
+                f"{self.config_entry.entry_id}_presence",
+            )
+            errors.update(
+                _source_selection_errors(
+                    self.hass,
+                    base,
+                    own_entity_id,
+                    self.config_entry.entry_id,
                 )
-                self._pending_base = base
-                self._pending_base[CONF_CONTROL_ACTIVE_STATES] = {
-                    entity_id: str(existing_active_states.get(entity_id, STATE_ON))
-                    for entity_id in base[CONF_CONTROL_ENTITIES]
-                }
-                self._control_index = 0
+            )
+            if not errors:
+                self._begin_wizard(base, current)
                 return await self.async_step_control_state()
 
         return self.async_show_form(
@@ -561,81 +723,10 @@ class AdvancedPresenceDetectionOptionsFlow(config_entries.OptionsFlowWithReload)
             errors=errors,
         )
 
-    async def async_step_control_state(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Manage which state means active for each control entity."""
-        control_entities: list[str] = self._pending_base[CONF_CONTROL_ENTITIES]
-        entity_id = control_entities[self._control_index]
-
-        if user_input is not None:
-            self._pending_base[CONF_CONTROL_ACTIVE_STATES][entity_id] = str(
-                user_input[FIELD_CONTROL_ACTIVE_STATE]
-            )
-            self._control_index += 1
-
-            if self._control_index >= len(control_entities):
-                current = self._current_config()
-                existing_cooldowns: dict[str, int] = current.get(
-                    CONF_MOTION_COOLDOWNS, {}
-                )
-                if not isinstance(existing_cooldowns, dict):
-                    existing_cooldowns = {}
-                default_cooldown = self._pending_base[CONF_DEFAULT_COOLDOWN]
-                self._pending_base[CONF_MOTION_COOLDOWNS] = {
-                    motion_entity_id: _bounded_int(
-                        existing_cooldowns.get(motion_entity_id, default_cooldown),
-                        default_cooldown,
-                        MIN_COOLDOWN,
-                        MAX_COOLDOWN,
-                    )
-                    for motion_entity_id in self._pending_base[CONF_MOTION_ENTITIES]
-                }
-                self._motion_index = 0
-                return await self.async_step_motion_cooldown()
-
-            entity_id = control_entities[self._control_index]
-
-        default_active_state = self._pending_base[CONF_CONTROL_ACTIVE_STATES].get(
-            entity_id, STATE_ON
+    async def _async_finish_wizard(self, data: dict[str, Any]) -> FlowResult:
+        """Save options and keep the config-entry title synchronized."""
+        self.hass.config_entries.async_update_entry(
+            self.config_entry,
+            title=data["name"],
         )
-        return self.async_show_form(
-            step_id="control_state",
-            data_schema=_control_active_state_schema(default_active_state),
-            description_placeholders=_control_placeholders(
-                self.hass, control_entities, self._control_index
-            ),
-        )
-
-    async def async_step_motion_cooldown(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Manage per sensor cooldown options."""
-        motion_entities: list[str] = self._pending_base[CONF_MOTION_ENTITIES]
-        entity_id = motion_entities[self._motion_index]
-
-        if user_input is not None:
-            self._pending_base[CONF_MOTION_COOLDOWNS][entity_id] = _bounded_int(
-                user_input[FIELD_MOTION_COOLDOWN],
-                self._pending_base[CONF_DEFAULT_COOLDOWN],
-                MIN_COOLDOWN,
-                MAX_COOLDOWN,
-            )
-            self._motion_index += 1
-
-            if self._motion_index >= len(motion_entities):
-                data = dict(self._pending_base)
-                return self.async_create_entry(title="", data=data)
-
-            entity_id = motion_entities[self._motion_index]
-
-        default_cooldown = self._pending_base[CONF_MOTION_COOLDOWNS].get(
-            entity_id, self._pending_base[CONF_DEFAULT_COOLDOWN]
-        )
-        return self.async_show_form(
-            step_id="motion_cooldown",
-            data_schema=_cooldown_schema(default_cooldown),
-            description_placeholders=_motion_placeholders(
-                self.hass, motion_entities, self._motion_index
-            ),
-        )
+        return self.async_create_entry(title="", data=data)

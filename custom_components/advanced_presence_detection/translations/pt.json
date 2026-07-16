@@ -19,7 +19,7 @@
         },
         "data_description": {
           "name": "O nome que o Home Assistant irá mostrar para o novo sensor de presença.",
-          "door_entities": "Escolha cada binary sensor, switch, input boolean ou fan que deve manter a presença. Exemplos: uma porta fechada, uma TV ligada, um aparelho em funcionamento, um auxiliar ou uma ventoinha.",
+          "door_entities": "Selecione cada sensor binário, interruptor, booleano de entrada, ventoinha, luz, comando ou leitor multimédia que deve manter a presença. Exemplos: uma porta fechada, uma televisão a reproduzir, um aparelho em funcionamento, um auxiliar ou uma ventoinha.",
           "motion_entities": "Escolha cada sensor de movimento que consiga detetar movimento nesta divisão ou área.",
           "default_cooldown": "Segundos. Este é o valor inicial para cada sensor de movimento. Pode ajustar cada um mais tarde. O temporizador começa quando os controlos selecionados ficam fechados/ativos.",
           "fresh_window": "Segundos. Depois de os controlos abrirem ou ficarem fechados/ativos, mantém o sensor de presença ligado aconteça o que acontecer. Use 15 se não tiver a certeza.",
@@ -32,12 +32,12 @@
       },
       "control_state": {
         "title": "Configurar um controlo",
-        "description": "Controlo {control_number} de {control_total}: **{control_name}** (`{control_entity_id}`).\n\nColoque o objeto real no estado que deve manter a presença. Feche a porta, ligue a TV, inicie o aparelho ou ligue o auxiliar. O Home Assistant diz que esta entidade está atualmente em `{current_state}`.\n\nEscolha o valor que aparece quando deve manter a presença.",
+        "description": "Controlo {control_number} de {control_total}: **{control_name}** (`{control_entity_id}`).\n\nColoque o dispositivo real num estado que deve manter a presença. Feche a porta, reproduza ou pause a televisão, inicie o aparelho ou ligue o auxiliar. O Home Assistant indica que esta entidade está atualmente em `{current_state}`.\n\nSelecione todos os estados que devem manter a presença.",
         "data": {
-          "control_active_state": "Que valor significa fechado/ativo?"
+          "control_active_state": "Que estados significam fechado/ativo?"
         },
         "data_description": {
-          "control_active_state": "Escolha On se a entidade disser on quando deve manter a presença. Escolha Off se disser off quando deve manter a presença."
+          "control_active_state": "Selecione um ou mais estados. Por exemplo, um leitor multimédia pode manter a presença durante Reprodução ou Pausa."
         }
       },
       "motion_cooldown": {
@@ -53,7 +53,11 @@
     },
     "error": {
       "no_controls": "Selecione pelo menos um controlo.",
-      "no_motions": "Selecione pelo menos um sensor de movimento."
+      "no_motions": "Selecione pelo menos um sensor de movimento.",
+      "same_source_roles": "Não selecione a mesma entidade como controlo e sensor de movimento.",
+      "self_reference": "O sensor de presença criado não pode usar-se a si próprio como origem.",
+      "presence_cycle": "Um sensor de presença não pode depender de si próprio através de outro auxiliar Advanced Presence Detection.",
+      "no_active_states": "Selecione pelo menos um estado fechado/ativo."
     }
   },
   "options": {
@@ -75,7 +79,7 @@
         },
         "data_description": {
           "name": "O nome que o Home Assistant mostra para o sensor de presença.",
-          "door_entities": "Escolha cada binary sensor, switch, input boolean ou fan que deve manter a presença. Exemplos: uma porta fechada, uma TV ligada, um aparelho em funcionamento, um auxiliar ou uma ventoinha.",
+          "door_entities": "Selecione cada sensor binário, interruptor, booleano de entrada, ventoinha, luz, comando ou leitor multimédia que deve manter a presença. Exemplos: uma porta fechada, uma televisão a reproduzir, um aparelho em funcionamento, um auxiliar ou uma ventoinha.",
           "motion_entities": "Escolha cada sensor de movimento que consiga detetar movimento nesta divisão ou área.",
           "default_cooldown": "Segundos. Este é o valor inicial para sensores de movimento adicionados recentemente. Sensores existentes mantêm os valores guardados, a menos que os altere nos próximos ecrãs.",
           "fresh_window": "Segundos. Depois de os controlos abrirem ou ficarem fechados/ativos, mantém o sensor de presença ligado aconteça o que acontecer. Use 15 se não tiver a certeza.",
@@ -88,12 +92,12 @@
       },
       "control_state": {
         "title": "Configurar um controlo",
-        "description": "Controlo {control_number} de {control_total}: **{control_name}** (`{control_entity_id}`).\n\nColoque o objeto real no estado que deve manter a presença. Feche a porta, ligue a TV, inicie o aparelho ou ligue o auxiliar. O Home Assistant diz que esta entidade está atualmente em `{current_state}`.\n\nEscolha o valor que aparece quando deve manter a presença.",
+        "description": "Controlo {control_number} de {control_total}: **{control_name}** (`{control_entity_id}`).\n\nColoque o dispositivo real num estado que deve manter a presença. Feche a porta, reproduza ou pause a televisão, inicie o aparelho ou ligue o auxiliar. O Home Assistant indica que esta entidade está atualmente em `{current_state}`.\n\nSelecione todos os estados que devem manter a presença.",
         "data": {
-          "control_active_state": "Que valor significa fechado/ativo?"
+          "control_active_state": "Que estados significam fechado/ativo?"
         },
         "data_description": {
-          "control_active_state": "Escolha On se a entidade disser on quando deve manter a presença. Escolha Off se disser off quando deve manter a presença."
+          "control_active_state": "Selecione um ou mais estados. Por exemplo, um leitor multimédia pode manter a presença durante Reprodução ou Pausa."
         }
       },
       "motion_cooldown": {
@@ -109,14 +113,23 @@
     },
     "error": {
       "no_controls": "Selecione pelo menos um controlo.",
-      "no_motions": "Selecione pelo menos um sensor de movimento."
+      "no_motions": "Selecione pelo menos um sensor de movimento.",
+      "same_source_roles": "Não selecione a mesma entidade como controlo e sensor de movimento.",
+      "self_reference": "O sensor de presença criado não pode usar-se a si próprio como origem.",
+      "presence_cycle": "Um sensor de presença não pode depender de si próprio através de outro auxiliar Advanced Presence Detection.",
+      "no_active_states": "Selecione pelo menos um estado fechado/ativo."
     }
   },
   "selector": {
     "control_active_state": {
       "options": {
-        "on": "On significa fechado/ativo",
-        "off": "Off significa fechado/ativo"
+        "on": "Ligado significa fechado/ativo",
+        "off": "Desligado significa fechado/ativo",
+        "playing": "A reproduzir significa fechado/ativo",
+        "paused": "Em pausa significa fechado/ativo",
+        "buffering": "A carregar significa fechado/ativo",
+        "idle": "Inativo significa fechado/ativo",
+        "standby": "Em espera significa fechado/ativo"
       }
     },
     "control_closed_mode": {
@@ -130,6 +143,12 @@
         "mark_unavailable": "Marcar este sensor de presença como indisponível",
         "treat_inactive": "Tratar fontes indisponíveis como inativas/desligadas"
       }
+    }
+  },
+  "issues": {
+    "missing_source_entities": {
+      "title": "Faltam entidades de origem",
+      "description": "O auxiliar **{helper_name}** refere entidades que já não existem: {entities}. Abra **Definições > Dispositivos e serviços > Auxiliares**, edite este auxiliar e selecione controlos ou sensores de movimento de substituição."
     }
   }
 }
