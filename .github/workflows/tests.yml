@@ -47,7 +47,6 @@ jobs:
           python -m pip install
           homeassistant==${{ matrix.homeassistant }}
           pytest-homeassistant-custom-component==${{ matrix.test_plugin }}
-          pytest-cov==7.1.0
       - name: Run tests
         run: >-
           pytest -q
