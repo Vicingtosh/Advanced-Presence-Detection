@@ -16,6 +16,8 @@ from pytest_homeassistant_custom_component.common import (
 
 from custom_components.advanced_presence_detection.binary_sensor import (
     EASTER_EGG_MESSAGES,
+    AdvancedPresenceDetectionBinarySensor,
+    _bounded_int,
 )
 from custom_components.advanced_presence_detection.const import DOMAIN
 
@@ -24,6 +26,15 @@ SECOND_CONTROL = "switch.test_activity"
 MOTION = "binary_sensor.test_motion"
 MEDIA_PLAYER = "media_player.test_tv"
 ENTITY_ID = "binary_sensor.test_presence"
+MASTER = "input_boolean.presence_enabled"
+
+
+def test_runtime_numeric_values_fall_back_and_stay_in_range() -> None:
+    """Runtime normalization protects entities from malformed stored values."""
+    assert _bounded_int(None, 30, 1, 3600) == 30
+    assert _bounded_int("not-a-number", 30, 1, 3600) == 30
+    assert _bounded_int(0, 30, 1, 3600) == 1
+    assert _bounded_int(3601, 30, 1, 3600) == 3600
 
 
 def _entry(
@@ -37,6 +48,7 @@ def _entry(
     unavailable_behavior: str = "mark_unavailable",
     open_no_motion_timeout: int = 0,
     show_debug_attributes: bool = False,
+    master: str | None = None,
 ) -> MockConfigEntry:
     """Return a configured test entry."""
     return MockConfigEntry(
@@ -44,6 +56,7 @@ def _entry(
         title="Test Presence",
         data={
             "name": "Test Presence",
+            "master_reset_entity": master,
             "door_entities": [control],
             "motion_entities": [MOTION],
             "control_active_states": {control: active_states},
@@ -98,6 +111,207 @@ async def test_motion_latches_after_cooldown(hass: HomeAssistant, freezer) -> No
     await hass.async_block_till_done()
     assert _presence_state(hass).state == "on"
     assert _presence_state(hass).attributes["latched"] is True
+
+
+@pytest.mark.parametrize(
+    "domain",
+    [
+        "switch",
+        "input_boolean",
+        "binary_sensor",
+        "light",
+        "fan",
+        "remote",
+        "media_player",
+    ],
+)
+async def test_master_off_event_resets_motion_and_grace_once(
+    hass: HomeAssistant,
+    freezer,
+    domain: str,
+) -> None:
+    """Reset cancels existing timers; new activity works while master stays off."""
+    master = f"{domain}.presence_reset"
+    hass.states.async_set(master, "on")
+    entry = _entry(
+        master=master,
+        fresh_window=15,
+        cooldown=30,
+        show_debug_attributes=True,
+    )
+    await _setup(hass, entry, control_state="off", motion_state="on")
+    hass.states.async_set(CONTROL, "on")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).attributes["control_grace_active"] is True
+
+    hass.states.async_set(master, "off")
+    await hass.async_block_till_done()
+    state = _presence_state(hass)
+    assert state.state == "off"
+    assert state.attributes["state_reason"] == "master_reset"
+    assert state.attributes["latched"] is False
+    assert state.attributes["pending_confirmation_sensors"] == []
+    assert state.attributes["control_grace_active"] is False
+
+    freezer.tick(timedelta(seconds=60))
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "off"
+
+    hass.states.async_set(CONTROL, "off")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "on"
+    hass.states.async_set(CONTROL, "on")
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=31))
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+    assert _presence_state(hass).attributes["latched"] is True
+    assert hass.states.get(master).state == "off"
+
+    hass.states.async_set(master, "off", {"updated": True})
+    await hass.async_block_till_done()
+    assert _presence_state(hass).attributes["latched"] is True
+    hass.states.async_set(master, "on")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).attributes["latched"] is True
+
+
+async def test_master_reset_clears_latch_and_survives_reload(
+    hass: HomeAssistant,
+    freezer,
+) -> None:
+    """A reset clears a quiet-room latch and its timer in the saved snapshot."""
+    hass.states.async_set(MASTER, "on")
+    entry = _entry(
+        master=MASTER,
+        cooldown=1,
+        no_motion_timeout=60,
+        show_debug_attributes=True,
+    )
+    await _setup(hass, entry, motion_state="on")
+    freezer.tick(timedelta(seconds=2))
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+    hass.states.async_set(MOTION, "off")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).attributes["latched"] is True
+    assert _presence_state(hass).attributes["no_motion_timer_active"] is True
+
+    hass.states.async_set(MASTER, "off")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "off"
+    assert _presence_state(hass).attributes["no_motion_timer_active"] is False
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "off"
+    assert _presence_state(hass).attributes["latched"] is False
+
+    hass.states.async_set(MOTION, "on")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "on"
+    assert _presence_state(hass).attributes["latched"] is False
+
+
+async def test_master_reset_cancels_inactive_motion_delay(
+    hass: HomeAssistant,
+) -> None:
+    """A turn-off event clears the inactive no-motion delay immediately."""
+    hass.states.async_set(MASTER, "on")
+    entry = _entry(master=MASTER, open_no_motion_timeout=60, show_debug_attributes=True)
+    await _setup(hass, entry, control_state="off", motion_state="on")
+    hass.states.async_set(MOTION, "off")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).attributes["open_no_motion_timer_active"] is True
+    hass.states.async_set(MASTER, "off")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "off"
+    assert _presence_state(hass).attributes["open_no_motion_timer_active"] is False
+    hass.states.async_set(MASTER, "on")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "off"
+
+
+async def test_master_already_off_does_not_clear_restored_latch(
+    hass: HomeAssistant,
+    freezer,
+) -> None:
+    """A stored off state is not replayed as a reset during reload."""
+    hass.states.async_set(MASTER, "on")
+    entry = _entry(master=MASTER, cooldown=1)
+    await _setup(hass, entry, motion_state="on")
+    freezer.tick(timedelta(seconds=2))
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+    assert _presence_state(hass).attributes["latched"] is True
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    hass.states.async_set(MASTER, "off")
+    hass.states.async_set(MOTION, "off")
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "on"
+    assert _presence_state(hass).attributes["latched"] is True
+
+
+async def test_master_reset_clears_suspended_latch(
+    hass: HomeAssistant,
+    freezer,
+) -> None:
+    """A reset during a source outage discards the latch before recovery."""
+    hass.states.async_set(MASTER, "on")
+    entry = _entry(master=MASTER, cooldown=1)
+    await _setup(hass, entry, motion_state="on")
+    freezer.tick(timedelta(seconds=2))
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+    hass.states.async_set(CONTROL, "unavailable")
+    await hass.async_block_till_done()
+    hass.states.async_set(MASTER, "off")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "unavailable"
+    hass.states.async_set(CONTROL, "on")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "on"
+    assert _presence_state(hass).attributes["latched"] is False
+
+
+@pytest.mark.parametrize("master_state", [None, "off", "unknown", "unavailable"])
+@pytest.mark.parametrize("unavailable_behavior", ["mark_unavailable", "treat_inactive"])
+async def test_master_state_never_blocks_normal_detection(
+    hass: HomeAssistant,
+    freezer,
+    master_state: str | None,
+    unavailable_behavior: str,
+) -> None:
+    """An event-only source cannot control presence or availability by its state."""
+    if master_state is not None:
+        hass.states.async_set(MASTER, master_state)
+    entry = _entry(master=MASTER, cooldown=1, unavailable_behavior=unavailable_behavior)
+    await _setup(hass, entry, motion_state="on")
+    assert _presence_state(hass).state == "on"
+    freezer.tick(timedelta(seconds=2))
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+    assert _presence_state(hass).attributes["latched"] is True
+    hass.states.async_set(MASTER, "off")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).attributes["latched"] is True
+
+
+async def test_master_off_event_clears_pending_startup_restore(
+    hass: HomeAssistant,
+) -> None:
+    """A reset observed during startup cannot be overwritten by an older snapshot."""
+    hass.states.async_set(MASTER, "on")
+    entry = _entry(master=MASTER, show_debug_attributes=True)
+    await _setup(hass, entry, control_state="unavailable")
+    hass.states.async_set(MASTER, "off")
+    await hass.async_block_till_done()
+    hass.states.async_set(CONTROL, "on")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "off"
+    assert _presence_state(hass).attributes["latched"] is False
+    assert _presence_state(hass).attributes["pending_confirmation_sensors"] == []
 
 
 async def test_motion_off_before_cooldown_turns_presence_off(
@@ -196,6 +410,35 @@ async def test_control_group_all_or_any_mode(
     await hass.async_block_till_done()
 
     assert _presence_state(hass).attributes["control_group_active"] is (expected_active)
+
+
+async def test_missing_controls_remain_unavailable_without_latching(
+    hass: HomeAssistant,
+) -> None:
+    """Missing controls keep the entity unavailable and cannot create a latch."""
+    base_entry = _entry()
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title=base_entry.title,
+        data={
+            **base_entry.data,
+            "door_entities": [],
+            "control_active_states": {},
+        },
+    )
+    await _setup(hass, entry)
+
+    assert _presence_state(hass).state == "unavailable"
+    entity = AdvancedPresenceDetectionBinarySensor(entry)
+    assert entity._control_group_closed() is False
+
+    hass.states.async_set(MOTION, "on")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "unavailable"
+
+    hass.states.async_set(MOTION, "off")
+    await hass.async_block_till_done()
+    assert _presence_state(hass).state == "unavailable"
 
 
 async def test_latched_presence_expires_after_no_motion_timeout(
@@ -333,6 +576,25 @@ async def test_debug_and_easteregg_attributes_follow_runtime_mode(
     attributes = _presence_state(hass).attributes
     assert attributes["easteregg_mode"] == "stillness_mode"
     assert attributes["easteregg_message"] in EASTER_EGG_MESSAGES["stillness_mode"]
+
+
+async def test_easteregg_messages_do_not_repeat_consecutively(
+    hass: HomeAssistant,
+) -> None:
+    """Returning to one easter egg mode always selects a different message."""
+    entry = _entry(cooldown=30, show_debug_attributes=True)
+    await _setup(hass, entry)
+    first_message = _presence_state(hass).attributes["easteregg_message"]
+
+    hass.states.async_set(MOTION, "on")
+    await hass.async_block_till_done()
+    assert "easteregg_message" not in _presence_state(hass).attributes
+
+    hass.states.async_set(MOTION, "off")
+    await hass.async_block_till_done()
+    attributes = _presence_state(hass).attributes
+    assert attributes["easteregg_mode"] == "quiet_watch"
+    assert attributes["easteregg_message"] != first_message
 
 
 async def test_startup_unavailable_state_does_not_discard_latch(
@@ -653,7 +915,9 @@ async def test_helper_creates_visible_virtual_device(hass: HomeAssistant) -> Non
     await _setup(hass, entry)
 
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+    devices = dr.async_entries_for_config_entry(registry, entry.entry_id)
+    assert len(devices) == 1
+    device = devices[0]
     assert device is not None
     assert device.entry_type is None
     assert device.name == "Test Presence"
@@ -677,7 +941,7 @@ async def test_existing_service_device_is_migrated_in_place(
 
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    migrated = registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+    migrated = registry.async_get(old_device.id)
 
     assert migrated is not None
     assert migrated.id == old_device.id

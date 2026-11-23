@@ -5,12 +5,14 @@ from homeassistant.const import Platform
 DOMAIN = "advanced_presence_detection"
 PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR]
 
+# Keep the original stored key so entries created before the controls rename load.
 CONF_DOOR_ENTITIES = "door_entities"
 CONF_CONTROL_ENTITIES = CONF_DOOR_ENTITIES
 CONF_CONTROL_ACTIVE_STATES = "control_active_states"
 CONF_MOTION_ENTITIES = "motion_entities"
 CONF_MOTION_COOLDOWNS = "motion_cooldowns"
 CONF_DEFAULT_COOLDOWN = "default_cooldown"
+# Keep the original stored key so existing grace-time settings remain compatible.
 CONF_FRESH_WINDOW = "fresh_window"
 CONF_CONTROL_GRACE_TIME = CONF_FRESH_WINDOW
 CONF_NO_MOTION_TIMEOUT = "no_motion_timeout"
@@ -18,6 +20,7 @@ CONF_OPEN_NO_MOTION_TIMEOUT = "open_no_motion_timeout"
 CONF_CONTROL_CLOSED_MODE = "control_closed_mode"
 CONF_UNAVAILABLE_BEHAVIOR = "unavailable_behavior"
 CONF_SHOW_DEBUG_ATTRIBUTES = "show_debug_attributes"
+CONF_MASTER_RESET_ENTITY = "master_reset_entity"
 
 CONTROL_ENTITY_DOMAINS = (
     "binary_sensor",

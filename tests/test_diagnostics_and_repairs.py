@@ -24,15 +24,17 @@ from custom_components.advanced_presence_detection.repairs import (
 
 CONTROL = "binary_sensor.private_door"
 MOTION = "binary_sensor.private_motion"
+MASTER = "input_boolean.private_master"
 
 
-def _entry() -> MockConfigEntry:
+def _entry(*, master: str | None = None) -> MockConfigEntry:
     """Return a minimal configured helper."""
     return MockConfigEntry(
         domain=DOMAIN,
         title="Private Room",
         data={
             "name": "Private Room",
+            "master_reset_entity": master,
             "door_entities": [CONTROL],
             "motion_entities": [MOTION],
             "control_active_states": {CONTROL: ["on"]},
@@ -52,10 +54,11 @@ async def test_diagnostics_redact_names_and_source_ids(
     hass: HomeAssistant,
 ) -> None:
     """Diagnostics retain useful state while redacting private identifiers."""
-    entry = _entry()
+    entry = _entry(master=MASTER)
     entry.add_to_hass(hass)
     hass.states.async_set(CONTROL, "on")
     hass.states.async_set(MOTION, "off")
+    hass.states.async_set(MASTER, "on")
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
@@ -64,6 +67,8 @@ async def test_diagnostics_redact_names_and_source_ids(
     assert "Private Room" not in rendered
     assert CONTROL not in rendered
     assert MOTION not in rendered
+    assert MASTER not in rendered
+    assert diagnostics["sources"][-1]["role"] == "master_reset"
     assert diagnostics["sources"][0]["state"] == "on"
 
 
@@ -71,7 +76,7 @@ async def test_repair_tracks_sources_that_no_longer_exist(
     hass: HomeAssistant,
 ) -> None:
     """A repair appears for removed entities and clears when they return."""
-    entry = _entry()
+    entry = _entry(master=MASTER)
     entry.add_to_hass(hass)
 
     async_update_missing_source_issue(hass, entry)
@@ -81,8 +86,15 @@ async def test_repair_tracks_sources_that_no_longer_exist(
 
     hass.states.async_set(CONTROL, "unavailable")
     hass.states.async_set(MOTION, "off")
+    hass.states.async_set(MASTER, "on")
     async_update_missing_source_issue(hass, entry)
     assert registry.async_get_issue(DOMAIN, issue_id) is None
+
+    hass.states.async_remove(MASTER)
+    async_update_missing_source_issue(hass, entry)
+    issue = registry.async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert MASTER in issue.translation_placeholders["entities"]
 
 
 async def test_repair_treats_registered_sources_without_states_as_existing(

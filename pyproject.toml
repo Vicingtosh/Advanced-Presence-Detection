@@ -1,6 +1,7 @@
 [tool.ruff]
 line-length = 88
-target-version = "py314"
+# Preserve parenthesized exception lists for older tooling. HA runs on Python 3.14.
+target-version = "py313"
 
 [tool.ruff.lint]
 select = ["ASYNC", "B", "E", "F", "I", "RUF", "UP"]

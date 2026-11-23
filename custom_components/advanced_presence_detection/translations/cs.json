@@ -15,7 +15,8 @@
           "unavailable_behavior": "Co se má stát, když je vybraný zdroj nedostupný?",
           "show_debug_attributes": "Zobrazit ladicí atributy",
           "no_motion_timeout_minutes": "Limit bez pohybu při zavřeno/aktivní v minutách",
-          "open_no_motion_timeout_minutes": "Zpoždění bez pohybu při neaktivním stavu v minutách"
+          "open_no_motion_timeout_minutes": "Zpoždění bez pohybu při neaktivním stavu v minutách",
+          "master_reset_entity": "Entita hlavního resetu (volitelné)"
         },
         "data_description": {
           "name": "Název, který Home Assistant zobrazí pro nový senzor přítomnosti.",
@@ -27,7 +28,8 @@
           "unavailable_behavior": "Vyberte, zda má chybějící, neznámý nebo nedostupný zdroj označit tento senzor přítomnosti jako nedostupný, nebo se má prostě počítat jako neaktivní/vypnutý.",
           "show_debug_attributes": "Ve výchozím nastavení vypnuto. Zapněte pouze při řešení problémů, aby se zobrazily podrobné stavy zdrojů, vyhodnocení, časovače, cooldowny a čekající potvrzení.",
           "no_motion_timeout_minutes": "Minuty. Když se přítomnost udržuje, zatímco jsou řízení zavřená/aktivní, vypnout po tolika minutách bez pohybu. Použijte 60 pro jednu hodinu. Použijte 0 pro vypnutí tohoto limitu.",
-          "open_no_motion_timeout_minutes": "Minuty. Když jsou řízení otevřená/vypnutá, udržujte přítomnost po tuto dobu poté, co se všechny senzory pohybu vypnou. Použijte 0 pro okamžité sledování pohybu."
+          "open_no_motion_timeout_minutes": "Minuty. Když jsou řízení otevřená/vypnutá, udržujte přítomnost po tuto dobu poté, co se všechny senzory pohybu vypnou. Použijte 0 pro okamžité sledování pohybu.",
+          "master_reset_entity": "Volitelně vyberte spínač, přepínacího pomocníka nebo jinou řídicí entitu. Při přechodu ze známého stavu do vypnuto se přítomnost jednorázově vypne a všechny časovače i zachovaná přítomnost se zruší. Setrvání ve vypnutém stavu detekci neblokuje: další události pohybu nebo řízení mohou přítomnost znovu zapnout. Zapnutí této entity nic neudělá. Vypnutý stav při spuštění nebo po obnovení spojení reset nevyvolá."
         }
       },
       "control_state": {
@@ -75,7 +77,8 @@
           "unavailable_behavior": "Co se má stát, když je vybraný zdroj nedostupný?",
           "show_debug_attributes": "Zobrazit ladicí atributy",
           "no_motion_timeout_minutes": "Limit bez pohybu při zavřeno/aktivní v minutách",
-          "open_no_motion_timeout_minutes": "Zpoždění bez pohybu při neaktivním stavu v minutách"
+          "open_no_motion_timeout_minutes": "Zpoždění bez pohybu při neaktivním stavu v minutách",
+          "master_reset_entity": "Entita hlavního resetu (volitelné)"
         },
         "data_description": {
           "name": "Název, který Home Assistant zobrazuje pro senzor přítomnosti.",
@@ -87,7 +90,8 @@
           "unavailable_behavior": "Vyberte, zda má chybějící, neznámý nebo nedostupný zdroj označit tento senzor přítomnosti jako nedostupný, nebo se má prostě počítat jako neaktivní/vypnutý.",
           "show_debug_attributes": "Ve výchozím nastavení vypnuto. Zapněte pouze při řešení problémů, aby se zobrazily podrobné stavy zdrojů, vyhodnocení, časovače, cooldowny a čekající potvrzení.",
           "no_motion_timeout_minutes": "Minuty. Když se přítomnost udržuje, zatímco jsou řízení zavřená/aktivní, vypnout po tolika minutách bez pohybu. Použijte 60 pro jednu hodinu. Použijte 0 pro vypnutí tohoto limitu.",
-          "open_no_motion_timeout_minutes": "Minuty. Když jsou řízení otevřená/vypnutá, udržujte přítomnost po tuto dobu poté, co se všechny senzory pohybu vypnou. Použijte 0 pro okamžité sledování pohybu."
+          "open_no_motion_timeout_minutes": "Minuty. Když jsou řízení otevřená/vypnutá, udržujte přítomnost po tuto dobu poté, co se všechny senzory pohybu vypnou. Použijte 0 pro okamžité sledování pohybu.",
+          "master_reset_entity": "Volitelně vyberte spínač, přepínacího pomocníka nebo jinou řídicí entitu. Při přechodu ze známého stavu do vypnuto se přítomnost jednorázově vypne a všechny časovače i zachovaná přítomnost se zruší. Setrvání ve vypnutém stavu detekci neblokuje: další události pohybu nebo řízení mohou přítomnost znovu zapnout. Zapnutí této entity nic neudělá. Vypnutý stav při spuštění nebo po obnovení spojení reset nevyvolá."
         }
       },
       "control_state": {

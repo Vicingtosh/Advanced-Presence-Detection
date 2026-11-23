@@ -15,7 +15,8 @@
           "unavailable_behavior": "如果选定来源不可用，应如何处理？",
           "show_debug_attributes": "显示调试属性",
           "no_motion_timeout_minutes": "关闭/活动时无运动超时（分钟）",
-          "open_no_motion_timeout_minutes": "非活动时无运动延迟（分钟）"
+          "open_no_motion_timeout_minutes": "非活动时无运动延迟（分钟）",
+          "master_reset_entity": "主复位实体（可选）"
         },
         "data_description": {
           "name": "Home Assistant 将为新的存在传感器显示的名称。",
@@ -27,7 +28,8 @@
           "unavailable_behavior": "选择缺失、未知或不可用的来源是让此存在传感器变为不可用，还是只按非活动/关闭计算。",
           "show_debug_attributes": "默认关闭。仅在排查问题时启用，以显示详细来源状态、评估、计时器、cooldown 和待确认项。",
           "no_motion_timeout_minutes": "分钟。当控制实体关闭/活动并正在保持存在时，在没有运动这么多分钟后关闭。60 表示一小时。0 表示禁用此限制。",
-          "open_no_motion_timeout_minutes": "分钟。当控制实体打开/关闭时，在所有运动传感器关闭后继续保持存在这么久。使用 0 表示立即跟随运动。"
+          "open_no_motion_timeout_minutes": "分钟。当控制实体打开/关闭时，在所有运动传感器关闭后继续保持存在这么久。使用 0 表示立即跟随运动。",
+          "master_reset_entity": "可选。选择开关、切换辅助实体或其他控制实体。当它从已知状态变为关闭时，存在状态会关闭一次，并清除所有计时器和锁定状态。持续关闭不会阻止检测：之后的运动或控制事件仍可重新开启存在状态。开启此实体不会执行任何操作。启动时或恢复连接后已经处于关闭状态，不会触发复位。"
         }
       },
       "control_state": {
@@ -75,7 +77,8 @@
           "unavailable_behavior": "如果选定来源不可用，应如何处理？",
           "show_debug_attributes": "显示调试属性",
           "no_motion_timeout_minutes": "关闭/活动时无运动超时（分钟）",
-          "open_no_motion_timeout_minutes": "非活动时无运动延迟（分钟）"
+          "open_no_motion_timeout_minutes": "非活动时无运动延迟（分钟）",
+          "master_reset_entity": "主复位实体（可选）"
         },
         "data_description": {
           "name": "Home Assistant 为此存在传感器显示的名称。",
@@ -87,7 +90,8 @@
           "unavailable_behavior": "选择缺失、未知或不可用的来源是让此存在传感器变为不可用，还是只按非活动/关闭计算。",
           "show_debug_attributes": "默认关闭。仅在排查问题时启用，以显示详细来源状态、评估、计时器、cooldown 和待确认项。",
           "no_motion_timeout_minutes": "分钟。当控制实体关闭/活动并正在保持存在时，在没有运动这么多分钟后关闭。60 表示一小时。0 表示禁用此限制。",
-          "open_no_motion_timeout_minutes": "分钟。当控制实体打开/关闭时，在所有运动传感器关闭后继续保持存在这么久。使用 0 表示立即跟随运动。"
+          "open_no_motion_timeout_minutes": "分钟。当控制实体打开/关闭时，在所有运动传感器关闭后继续保持存在这么久。使用 0 表示立即跟随运动。",
+          "master_reset_entity": "可选。选择开关、切换辅助实体或其他控制实体。当它从已知状态变为关闭时，存在状态会关闭一次，并清除所有计时器和锁定状态。持续关闭不会阻止检测：之后的运动或控制事件仍可重新开启存在状态。开启此实体不会执行任何操作。启动时或恢复连接后已经处于关闭状态，不会触发复位。"
         }
       },
       "control_state": {

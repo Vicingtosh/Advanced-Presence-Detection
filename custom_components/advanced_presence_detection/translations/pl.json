@@ -15,7 +15,8 @@
           "unavailable_behavior": "Co zrobić, gdy wybrane źródło jest niedostępne?",
           "show_debug_attributes": "Pokaż atrybuty debugowania",
           "no_motion_timeout_minutes": "Limit bez ruchu przy zamknięciu/aktywności w minutach",
-          "open_no_motion_timeout_minutes": "Opóźnienie bez ruchu przy nieaktywności w minutach"
+          "open_no_motion_timeout_minutes": "Opóźnienie bez ruchu przy nieaktywności w minutach",
+          "master_reset_entity": "Encja resetowania głównego (opcjonalna)"
         },
         "data_description": {
           "name": "Nazwa, którą Home Assistant pokaże dla nowego czujnika obecności.",
@@ -27,7 +28,8 @@
           "unavailable_behavior": "Wybierz, czy brakujące, nieznane lub niedostępne źródło ma sprawić, że ten czujnik obecności będzie niedostępny, czy ma po prostu liczyć się jako nieaktywne/wyłączone.",
           "show_debug_attributes": "Domyślnie wyłączone. Włącz tylko podczas rozwiązywania problemów, aby pokazać szczegółowe stany źródeł, oceny, timery, cooldowny i oczekujące potwierdzenia.",
           "no_motion_timeout_minutes": "Minuty. Gdy obecność jest podtrzymywana, a sterowania są zamknięte/aktywne, wyłącz po tylu minutach bez ruchu. Użyj 60 dla jednej godziny. Użyj 0, aby wyłączyć ten limit.",
-          "open_no_motion_timeout_minutes": "Minuty. Gdy sterowania są otwarte/wyłączone, utrzymaj obecność przez ten czas po wyłączeniu wszystkich czujników ruchu. Użyj 0, aby natychmiast podążać za ruchem."
+          "open_no_motion_timeout_minutes": "Minuty. Gdy sterowania są otwarte/wyłączone, utrzymaj obecność przez ten czas po wyłączeniu wszystkich czujników ruchu. Użyj 0, aby natychmiast podążać za ruchem.",
+          "master_reset_entity": "Opcjonalnie wybierz przełącznik, pomocnika typu przełącznik lub inną encję sterującą. Przejście ze znanego stanu do wyłączenia jednorazowo wyłącza obecność oraz kasuje wszystkie zegary i podtrzymywaną obecność. Pozostawanie w stanie wyłączenia nie blokuje wykrywania: późniejsze zdarzenia ruchu lub sterowania mogą ponownie włączyć obecność. Włączenie tej encji nic nie robi. Stan wyłączenia zastany przy uruchomieniu lub po odzyskaniu połączenia nie wywołuje resetu."
         }
       },
       "control_state": {
@@ -75,7 +77,8 @@
           "unavailable_behavior": "Co zrobić, gdy wybrane źródło jest niedostępne?",
           "show_debug_attributes": "Pokaż atrybuty debugowania",
           "no_motion_timeout_minutes": "Limit bez ruchu przy zamknięciu/aktywności w minutach",
-          "open_no_motion_timeout_minutes": "Opóźnienie bez ruchu przy nieaktywności w minutach"
+          "open_no_motion_timeout_minutes": "Opóźnienie bez ruchu przy nieaktywności w minutach",
+          "master_reset_entity": "Encja resetowania głównego (opcjonalna)"
         },
         "data_description": {
           "name": "Nazwa, którą Home Assistant pokazuje dla czujnika obecności.",
@@ -87,7 +90,8 @@
           "unavailable_behavior": "Wybierz, czy brakujące, nieznane lub niedostępne źródło ma sprawić, że ten czujnik obecności będzie niedostępny, czy ma po prostu liczyć się jako nieaktywne/wyłączone.",
           "show_debug_attributes": "Domyślnie wyłączone. Włącz tylko podczas rozwiązywania problemów, aby pokazać szczegółowe stany źródeł, oceny, timery, cooldowny i oczekujące potwierdzenia.",
           "no_motion_timeout_minutes": "Minuty. Gdy obecność jest podtrzymywana, a sterowania są zamknięte/aktywne, wyłącz po tylu minutach bez ruchu. Użyj 60 dla jednej godziny. Użyj 0, aby wyłączyć ten limit.",
-          "open_no_motion_timeout_minutes": "Minuty. Gdy sterowania są otwarte/wyłączone, utrzymaj obecność przez ten czas po wyłączeniu wszystkich czujników ruchu. Użyj 0, aby natychmiast podążać za ruchem."
+          "open_no_motion_timeout_minutes": "Minuty. Gdy sterowania są otwarte/wyłączone, utrzymaj obecność przez ten czas po wyłączeniu wszystkich czujników ruchu. Użyj 0, aby natychmiast podążać za ruchem.",
+          "master_reset_entity": "Opcjonalnie wybierz przełącznik, pomocnika typu przełącznik lub inną encję sterującą. Przejście ze znanego stanu do wyłączenia jednorazowo wyłącza obecność oraz kasuje wszystkie zegary i podtrzymywaną obecność. Pozostawanie w stanie wyłączenia nie blokuje wykrywania: późniejsze zdarzenia ruchu lub sterowania mogą ponownie włączyć obecność. Włączenie tej encji nic nie robi. Stan wyłączenia zastany przy uruchomieniu lub po odzyskaniu połączenia nie wywołuje resetu."
         }
       },
       "control_state": {

@@ -15,7 +15,8 @@
           "unavailable_behavior": "O que deve acontecer se uma fonte selecionada estiver indisponível?",
           "show_debug_attributes": "Mostrar atributos de depuração",
           "no_motion_timeout_minutes": "Tempo sem movimento com controles fechados/ativos em minutos",
-          "open_no_motion_timeout_minutes": "Atraso sem movimento com controles inativos em minutos"
+          "open_no_motion_timeout_minutes": "Atraso sem movimento com controles inativos em minutos",
+          "master_reset_entity": "Entidade de redefinição geral (opcional)"
         },
         "data_description": {
           "name": "O nome que o Home Assistant vai mostrar para o novo sensor de presença.",
@@ -27,7 +28,8 @@
           "unavailable_behavior": "Escolha se uma fonte ausente, desconhecida ou indisponível deve tornar este sensor de presença indisponível, ou se deve simplesmente contar como inativa/desligada.",
           "show_debug_attributes": "Desativado por padrão. Ative apenas durante a solução de problemas para mostrar estados detalhados das fontes, avaliações, temporizadores, cooldowns e confirmações pendentes.",
           "no_motion_timeout_minutes": "Minutos. Quando a presença estiver sendo mantida enquanto os controles estão fechados/ativos, desligue após este número de minutos sem movimento. Use 60 para uma hora. Use 0 para desativar este limite.",
-          "open_no_motion_timeout_minutes": "Minutos. Quando os controles estão abertos/desligados, mantenha a presença ligada por este tempo depois que todos os sensores de movimento desligarem. Use 0 para seguir o movimento imediatamente."
+          "open_no_motion_timeout_minutes": "Minutos. Quando os controles estão abertos/desligados, mantenha a presença ligada por este tempo depois que todos os sensores de movimento desligarem. Use 0 para seguir o movimento imediatamente.",
+          "master_reset_entity": "Opcional. Escolha um interruptor, um ajudante de alternância ou outra entidade de controle. Ao passar de um estado conhecido para desligado, a presença é desligada uma vez e todos os temporizadores e a presença retida são limpos. Permanecer desligada não bloqueia a detecção: novos eventos de movimento ou controle podem ativar a presença. Ligar esta entidade não tem efeito. Um estado já desligado na inicialização ou após recuperação não provoca uma redefinição."
         }
       },
       "control_state": {
@@ -75,7 +77,8 @@
           "unavailable_behavior": "O que deve acontecer se uma fonte selecionada estiver indisponível?",
           "show_debug_attributes": "Mostrar atributos de depuração",
           "no_motion_timeout_minutes": "Tempo sem movimento com controles fechados/ativos em minutos",
-          "open_no_motion_timeout_minutes": "Atraso sem movimento com controles inativos em minutos"
+          "open_no_motion_timeout_minutes": "Atraso sem movimento com controles inativos em minutos",
+          "master_reset_entity": "Entidade de redefinição geral (opcional)"
         },
         "data_description": {
           "name": "O nome que o Home Assistant mostra para o sensor de presença.",
@@ -87,7 +90,8 @@
           "unavailable_behavior": "Escolha se uma fonte ausente, desconhecida ou indisponível deve tornar este sensor de presença indisponível, ou se deve simplesmente contar como inativa/desligada.",
           "show_debug_attributes": "Desativado por padrão. Ative apenas durante a solução de problemas para mostrar estados detalhados das fontes, avaliações, temporizadores, cooldowns e confirmações pendentes.",
           "no_motion_timeout_minutes": "Minutos. Quando a presença estiver sendo mantida enquanto os controles estão fechados/ativos, desligue após este número de minutos sem movimento. Use 60 para uma hora. Use 0 para desativar este limite.",
-          "open_no_motion_timeout_minutes": "Minutos. Quando os controles estão abertos/desligados, mantenha a presença ligada por este tempo depois que todos os sensores de movimento desligarem. Use 0 para seguir o movimento imediatamente."
+          "open_no_motion_timeout_minutes": "Minutos. Quando os controles estão abertos/desligados, mantenha a presença ligada por este tempo depois que todos os sensores de movimento desligarem. Use 0 para seguir o movimento imediatamente.",
+          "master_reset_entity": "Opcional. Escolha um interruptor, um ajudante de alternância ou outra entidade de controle. Ao passar de um estado conhecido para desligado, a presença é desligada uma vez e todos os temporizadores e a presença retida são limpos. Permanecer desligada não bloqueia a detecção: novos eventos de movimento ou controle podem ativar a presença. Ligar esta entidade não tem efeito. Um estado já desligado na inicialização ou após recuperação não provoca uma redefinição."
         }
       },
       "control_state": {

@@ -18,6 +18,7 @@ from .const import (
     CONF_CONTROL_ENTITIES,
     CONF_DEFAULT_COOLDOWN,
     CONF_FRESH_WINDOW,
+    CONF_MASTER_RESET_ENTITY,
     CONF_MOTION_COOLDOWNS,
     CONF_MOTION_ENTITIES,
     CONF_NO_MOTION_TIMEOUT,
@@ -45,7 +46,11 @@ from .const import (
     UNAVAILABLE_BEHAVIOR_MARK_UNAVAILABLE,
     UNAVAILABLE_BEHAVIOR_TREAT_INACTIVE,
 )
-from .source_graph import normalise_entity_ids, source_ids_causing_cycle
+from .source_graph import (
+    normalise_entity_ids,
+    normalise_master_reset_entity,
+    source_ids_causing_cycle,
+)
 
 FIELD_CONTROL_ACTIVE_STATE = "control_active_state"
 FIELD_MOTION_COOLDOWN = "motion_cooldown"
@@ -76,7 +81,7 @@ def _bounded_int(
     """Return an integer limited to the allowed range."""
     try:
         number = int(value)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return default
 
     return max(lower, min(upper, number))
@@ -86,7 +91,7 @@ def _bounded_minutes_from_seconds(value: Any, default_seconds: int) -> int:
     """Return stored seconds as bounded whole minutes."""
     try:
         seconds = int(value)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         seconds = default_seconds
 
     return _bounded_int(
@@ -206,6 +211,9 @@ def _normalise_base_input(user_input: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "name": str(user_input.get("name", DEFAULT_NAME)).strip() or DEFAULT_NAME,
+        CONF_MASTER_RESET_ENTITY: normalise_master_reset_entity(
+            user_input.get(CONF_MASTER_RESET_ENTITY)
+        ),
         CONF_CONTROL_ENTITIES: normalise_entity_ids(
             user_input.get(CONF_CONTROL_ENTITIES),
             set(CONTROL_ENTITY_DOMAINS),
@@ -250,6 +258,7 @@ def _source_selection_errors(
     errors: dict[str, str] = {}
     controls = set(base[CONF_CONTROL_ENTITIES])
     motions = set(base[CONF_MOTION_ENTITIES])
+    master = base.get(CONF_MASTER_RESET_ENTITY)
 
     if controls & motions:
         errors[CONF_CONTROL_ENTITIES] = "same_source_roles"
@@ -259,17 +268,21 @@ def _source_selection_errors(
         errors[CONF_CONTROL_ENTITIES] = "self_reference"
     if own_entity_id in motions:
         errors[CONF_MOTION_ENTITIES] = "self_reference"
+    if master is not None and master == own_entity_id:
+        errors[CONF_MASTER_RESET_ENTITY] = "self_reference"
 
     if own_entry_id is not None:
         cyclic_sources = source_ids_causing_cycle(
             hass,
             own_entry_id,
-            [*controls, *motions],
+            [*controls, *motions, *([master] if master else [])],
         )
         if controls & cyclic_sources:
             errors.setdefault(CONF_CONTROL_ENTITIES, "presence_cycle")
         if motions & cyclic_sources:
             errors.setdefault(CONF_MOTION_ENTITIES, "presence_cycle")
+        if master in cyclic_sources:
+            errors.setdefault(CONF_MASTER_RESET_ENTITY, "presence_cycle")
 
     return errors
 
@@ -277,6 +290,11 @@ def _source_selection_errors(
 def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     """Return the main configuration schema."""
     defaults = defaults or {}
+    master = normalise_master_reset_entity(defaults.get(CONF_MASTER_RESET_ENTITY))
+    master_field = vol.Optional(
+        CONF_MASTER_RESET_ENTITY,
+        description={"suggested_value": master} if master else {},
+    )
     no_motion_timeout_minutes = _bounded_minutes_from_seconds(
         defaults.get(CONF_NO_MOTION_TIMEOUT, DEFAULT_NO_MOTION_TIMEOUT),
         DEFAULT_NO_MOTION_TIMEOUT,
@@ -291,6 +309,9 @@ def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     return vol.Schema(
         {
             vol.Required("name", default=defaults.get("name", DEFAULT_NAME)): str,
+            master_field: selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=list(CONTROL_ENTITY_DOMAINS))
+            ),
             vol.Required(
                 CONF_CONTROL_ENTITIES,
                 default=defaults.get(CONF_CONTROL_ENTITIES, []),

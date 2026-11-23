@@ -15,7 +15,8 @@
           "unavailable_behavior": "Cosa fare se una sorgente selezionata non è disponibile?",
           "show_debug_attributes": "Mostra attributi di debug",
           "no_motion_timeout_minutes": "Timeout senza movimento con controlli chiusi/attivi in minuti",
-          "open_no_motion_timeout_minutes": "Ritardo senza movimento con controlli inattivi in minuti"
+          "open_no_motion_timeout_minutes": "Ritardo senza movimento con controlli inattivi in minuti",
+          "master_reset_entity": "Entità di azzeramento generale (facoltativa)"
         },
         "data_description": {
           "name": "Il nome che Home Assistant mostrerà per il nuovo sensore di presenza.",
@@ -27,7 +28,8 @@
           "unavailable_behavior": "Scegli se una sorgente mancante, sconosciuta o non disponibile deve rendere non disponibile questo sensore di presenza, oppure deve semplicemente contare come inattiva/spenta.",
           "show_debug_attributes": "Disattivato per impostazione predefinita. Attivalo solo durante la risoluzione dei problemi per mostrare stati dettagliati delle sorgenti, valutazioni, timer, cooldown e conferme in attesa.",
           "no_motion_timeout_minutes": "Minuti. Quando la presenza viene mantenuta mentre i controlli sono chiusi/attivi, spegnila dopo questo numero di minuti senza movimento. Usa 60 per un'ora. Usa 0 per disattivare questo limite.",
-          "open_no_motion_timeout_minutes": "Minuti. Quando i controlli sono aperti/spenti, mantieni la presenza accesa per questo tempo dopo che tutti i sensori di movimento si spengono. Usa 0 per seguire subito il movimento."
+          "open_no_motion_timeout_minutes": "Minuti. Quando i controlli sono aperti/spenti, mantieni la presenza accesa per questo tempo dopo che tutti i sensori di movimento si spengono. Usa 0 per seguire subito il movimento.",
+          "master_reset_entity": "Facoltativa. Scegli un interruttore, un helper di tipo commutatore o un’altra entità di controllo. Quando passa da uno stato noto a spento, la presenza si disattiva una volta e tutti i timer e la presenza mantenuta vengono azzerati. Restare spento non blocca il rilevamento: successivi eventi di movimento o controllo possono riattivare la presenza. Accendere questa entità non produce alcun effetto. Uno stato già spento all’avvio o dopo il ripristino non provoca un azzeramento."
         }
       },
       "control_state": {
@@ -75,7 +77,8 @@
           "unavailable_behavior": "Cosa fare se una sorgente selezionata non è disponibile?",
           "show_debug_attributes": "Mostra attributi di debug",
           "no_motion_timeout_minutes": "Timeout senza movimento con controlli chiusi/attivi in minuti",
-          "open_no_motion_timeout_minutes": "Ritardo senza movimento con controlli inattivi in minuti"
+          "open_no_motion_timeout_minutes": "Ritardo senza movimento con controlli inattivi in minuti",
+          "master_reset_entity": "Entità di azzeramento generale (facoltativa)"
         },
         "data_description": {
           "name": "Il nome che Home Assistant mostra per il sensore di presenza.",
@@ -87,7 +90,8 @@
           "unavailable_behavior": "Scegli se una sorgente mancante, sconosciuta o non disponibile deve rendere non disponibile questo sensore di presenza, oppure deve semplicemente contare come inattiva/spenta.",
           "show_debug_attributes": "Disattivato per impostazione predefinita. Attivalo solo durante la risoluzione dei problemi per mostrare stati dettagliati delle sorgenti, valutazioni, timer, cooldown e conferme in attesa.",
           "no_motion_timeout_minutes": "Minuti. Quando la presenza viene mantenuta mentre i controlli sono chiusi/attivi, spegnila dopo questo numero di minuti senza movimento. Usa 60 per un'ora. Usa 0 per disattivare questo limite.",
-          "open_no_motion_timeout_minutes": "Minuti. Quando i controlli sono aperti/spenti, mantieni la presenza accesa per questo tempo dopo che tutti i sensori di movimento si spengono. Usa 0 per seguire subito il movimento."
+          "open_no_motion_timeout_minutes": "Minuti. Quando i controlli sono aperti/spenti, mantieni la presenza accesa per questo tempo dopo che tutti i sensori di movimento si spengono. Usa 0 per seguire subito il movimento.",
+          "master_reset_entity": "Facoltativa. Scegli un interruttore, un helper di tipo commutatore o un’altra entità di controllo. Quando passa da uno stato noto a spento, la presenza si disattiva una volta e tutti i timer e la presenza mantenuta vengono azzerati. Restare spento non blocca il rilevamento: successivi eventi di movimento o controllo possono riattivare la presenza. Accendere questa entità non produce alcun effetto. Uno stato già spento all’avvio o dopo il ripristino non provoca un azzeramento."
         }
       },
       "control_state": {

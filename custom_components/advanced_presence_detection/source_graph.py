@@ -11,6 +11,7 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import (
     CONF_CONTROL_ENTITIES,
+    CONF_MASTER_RESET_ENTITY,
     CONF_MOTION_ENTITIES,
     CONTROL_ENTITY_DOMAINS,
     DOMAIN,
@@ -36,9 +37,18 @@ def normalise_entity_ids(value: Any, allowed_domains: set[str]) -> list[str]:
     return entity_ids
 
 
+def normalise_master_reset_entity(value: Any) -> str | None:
+    """Return one supported event-only master reset entity."""
+    if not isinstance(value, str):
+        return None
+    entities = normalise_entity_ids(value, set(CONTROL_ENTITY_DOMAINS))
+    return entities[0] if entities else None
+
+
 def source_entity_ids(entry: ConfigEntry) -> list[str]:
     """Return normalized source entities selected by a config entry."""
     config = {**entry.data, **entry.options}
+    master = normalise_master_reset_entity(config.get(CONF_MASTER_RESET_ENTITY))
     return list(
         dict.fromkeys(
             [
@@ -50,6 +60,7 @@ def source_entity_ids(entry: ConfigEntry) -> list[str]:
                     config.get(CONF_MOTION_ENTITIES, []),
                     {"binary_sensor"},
                 ),
+                *([master] if master else []),
             ]
         )
     )

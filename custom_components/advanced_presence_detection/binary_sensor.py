@@ -14,7 +14,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import (
     Event,
     EventStateChangedData,
@@ -34,6 +34,7 @@ from .const import (
     CONF_CONTROL_ENTITIES,
     CONF_DEFAULT_COOLDOWN,
     CONF_FRESH_WINDOW,
+    CONF_MASTER_RESET_ENTITY,
     CONF_MOTION_COOLDOWNS,
     CONF_MOTION_ENTITIES,
     CONF_NO_MOTION_TIMEOUT,
@@ -61,7 +62,11 @@ from .const import (
     UNAVAILABLE_BEHAVIOR_MARK_UNAVAILABLE,
     UNAVAILABLE_BEHAVIOR_TREAT_INACTIVE,
 )
-from .source_graph import normalise_entity_ids, source_ids_causing_cycle
+from .source_graph import (
+    normalise_entity_ids,
+    normalise_master_reset_entity,
+    source_ids_causing_cycle,
+)
 
 UNKNOWN_STATES = {STATE_UNKNOWN, STATE_UNAVAILABLE}
 VALID_CONTROL_CLOSED_MODES = {CONTROL_CLOSED_MODE_ALL, CONTROL_CLOSED_MODE_ANY}
@@ -192,7 +197,7 @@ def _bounded_int(
     """Return an integer limited to the allowed range."""
     try:
         number = int(value)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return default
 
     return max(lower, min(upper, number))
@@ -219,6 +224,10 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         """Initialize the binary sensor."""
         self._entry = entry
         self._config = {**entry.data, **entry.options}
+        self._master_reset_entity = normalise_master_reset_entity(
+            self._config.get(CONF_MASTER_RESET_ENTITY)
+        )
+        self._master_reset_pending = False
         self._controls = normalise_entity_ids(
             self._config.get(CONF_CONTROL_ENTITIES, []),
             set(CONTROL_ENTITY_DOMAINS),
@@ -383,9 +392,16 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             return attributes
 
         now = dt_util.utcnow()
+        master = (
+            self.hass.states.get(self._master_reset_entity)
+            if self._master_reset_entity is not None
+            else None
+        )
         attributes.update(
             {
                 "control_entities": self._controls,
+                "master_reset_entity": self._master_reset_entity,
+                "master_reset_state": None if master is None else master.state,
                 "control_states": self._entity_states(self._controls),
                 "control_active_states": self._effective_control_active_states(),
                 "control_evaluations": self._control_evaluations(),
@@ -494,7 +510,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         else:
             self._is_on = False
 
-        watched_entities = [*self._controls, *self._motions]
+        watched_entities = self._source_entities()
         self._unsub_callbacks.append(
             async_track_state_change_event(
                 self.hass,
@@ -534,6 +550,20 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         entity_id = event.data["entity_id"]
         old_state = event.data.get("old_state")
         new_state = event.data.get("new_state")
+
+        if entity_id == self._master_reset_entity:
+            if (
+                self._is_meaningful_usable_change(old_state, new_state)
+                and new_state.state == STATE_OFF
+            ):
+                self._async_reset_from_master()
+                return
+            if entity_id not in self._controls and entity_id not in self._motions:
+                # An event-only reset source must never evaluate presence rules.
+                self._async_publish_state()
+                return
+
+        self._master_reset_pending = False
 
         if self._waiting_for_sources:
             if self._is_meaningful_usable_change(old_state, new_state):
@@ -576,6 +606,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         if entity_id in self._motions:
             self._async_handle_motion_change(entity_id, old_state, new_state)
             self._remember_usable_source_summary()
+            return
 
     @callback
     def _async_handle_control_change(
@@ -872,6 +903,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     @callback
     def _async_set_is_on(self, value: bool) -> None:
         """Set the presence state and write attributes."""
+        self._master_reset_pending = False
         self._is_on = value
         if self.hass is not None:
             self._async_publish_state()
@@ -904,11 +936,38 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             states[entity_id] = None if state is None else state.state
         return states
 
+    def _source_entities(self, *, include_master: bool = True) -> list[str]:
+        """Return watched sources, or just the sources used by presence rules."""
+        sources = [*self._controls, *self._motions]
+        if include_master and self._master_reset_entity is not None:
+            sources.append(self._master_reset_entity)
+        return list(dict.fromkeys(sources))
+
+    @callback
+    def _async_reset_from_master(self) -> None:
+        """Reset once on a real transition to off, without blocking future events."""
+        self._master_reset_pending = True
+        self._latched = False
+        self._is_on = False
+        self._closed_since = None
+        self._motion_off_since = None
+        self._motion_on_since.clear()
+        self._last_usable_motion_on = None
+        self._cancel_pending_restore()
+        self._cancel_all_pending_confirmations()
+        self._cancel_control_grace_timer()
+        self._cancel_no_motion_timer()
+        self._cancel_open_no_motion_timer()
+        self._sources_ready = True
+        self._runtime_suspended = self._should_suspend_for_unavailable_sources()
+        self._remember_usable_source_summary()
+        self._async_publish_state()
+
     def _all_sources_usable(self) -> bool:
         """Return true once every configured source has a usable state."""
         return all(
             not self._entity_is_unavailable(entity_id)
-            for entity_id in [*self._controls, *self._motions]
+            for entity_id in self._source_entities(include_master=False)
         )
 
     @staticmethod
@@ -960,6 +1019,9 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
             "no_motion_timeout": self._no_motion_timeout,
             "open_no_motion_timeout": self._open_no_motion_timeout,
         }
+        # Preserve signatures for existing helpers that have no master override.
+        if self._master_reset_entity is not None:
+            payload[CONF_MASTER_RESET_ENTITY] = self._master_reset_entity
         encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         return sha256(encoded.encode("utf-8")).hexdigest()
 
@@ -969,13 +1031,17 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         cyclic_sources = source_ids_causing_cycle(
             self.hass,
             self._entry.entry_id,
-            [*self._controls, *self._motions],
+            self._source_entities(),
         )
         invalid_sources = set(cyclic_sources)
-        if own_entity_id in self._controls or own_entity_id in self._motions:
+        if own_entity_id in self._source_entities():
             invalid_sources.add(own_entity_id)
         invalid_sources.update(set(self._controls) & set(self._motions))
         self._invalid_source_entities = sorted(invalid_sources)
+        if self._master_reset_entity == own_entity_id or (
+            self._master_reset_entity in cyclic_sources
+        ):
+            self._master_reset_entity = None
         self._controls = [
             entity_id
             for entity_id in self._controls
@@ -1040,7 +1106,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
                 *self._invalid_source_entities,
                 *(
                     entity_id
-                    for entity_id in [*self._controls, *self._motions]
+                    for entity_id in self._source_entities(include_master=False)
                     if self._entity_is_unavailable(entity_id)
                 ),
             }
@@ -1175,6 +1241,7 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
     def _control_group_closed(self) -> bool:
         """Return true if the control group is closed or active."""
         if not self._controls:
+            # An empty all() must never count as an active group and create a latch.
             return False
 
         active_states = [
@@ -1228,6 +1295,8 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
 
     def _state_reason(self, control_group_inactive: bool | None = None) -> str:
         """Return why the presence sensor currently has its state."""
+        if self._master_reset_pending:
+            return "master_reset"
         if control_group_inactive is None:
             control_group_inactive = self._control_group_is_inactive()
 
@@ -1267,6 +1336,8 @@ class AdvancedPresenceDetectionBinarySensor(BinarySensorEntity, RestoreEntity):
         control_group_inactive: bool | None = None,
     ) -> str | None:
         """Return a harmless easter egg label for quiet states."""
+        if self._master_reset_pending:
+            return None
         if control_group_inactive is None:
             control_group_inactive = self._control_group_is_inactive()
         if self._control_grace_active or self._any_motion_on():

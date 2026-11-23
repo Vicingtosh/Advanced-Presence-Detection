@@ -2,18 +2,34 @@
 
 from __future__ import annotations
 
+import pytest
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.advanced_presence_detection.config_flow import (
+    _bounded_int,
+    _bounded_minutes_from_seconds,
+)
 from custom_components.advanced_presence_detection.const import DOMAIN
 
 MEDIA_PLAYER = "media_player.test_tv"
 REMOTE = "remote.test_tv"
 LIGHT = "light.test_lamp"
 MOTION = "binary_sensor.test_motion"
+
+
+def test_stored_numeric_values_fall_back_and_stay_in_range() -> None:
+    """Malformed legacy values use safe defaults and valid values are bounded."""
+    assert _bounded_int(None, 15, 0, 300) == 15
+    assert _bounded_int("not-a-number", 15, 0, 300) == 15
+    assert _bounded_int(-1, 15, 0, 300) == 0
+    assert _bounded_int(301, 15, 0, 300) == 300
+    assert _bounded_minutes_from_seconds("not-a-number", 3600) == 60
+    assert _bounded_minutes_from_seconds(-60, 3600) == 0
+    assert _bounded_minutes_from_seconds(90_000_000, 3600) == 1440
 
 
 def _base_input(name: str) -> dict:
@@ -48,7 +64,10 @@ async def test_config_flow_stores_multiple_media_states(
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        _base_input("Cinema Presence"),
+        {
+            **_base_input("Cinema Presence"),
+            "master_reset_entity": "input_boolean.presence_enabled",
+        },
     )
     assert result["step_id"] == "control_state"
 
@@ -64,6 +83,7 @@ async def test_config_flow_stores_multiple_media_states(
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Cinema Presence"
+    assert result["data"]["master_reset_entity"] == "input_boolean.presence_enabled"
     assert result["data"]["control_active_states"][MEDIA_PLAYER] == [
         "playing",
         "paused",
@@ -142,8 +162,10 @@ async def test_config_flow_accepts_remote_and_light_controls(
     }
 
 
+@pytest.mark.parametrize("master", [None, "switch.presence_enabled"])
 async def test_options_flow_updates_config_entry_title(
     hass: HomeAssistant,
+    master: str | None,
 ) -> None:
     """Renaming a helper also updates its config-entry title."""
     entry = MockConfigEntry(
@@ -155,17 +177,23 @@ async def test_options_flow_updates_config_entry_title(
             "motion_cooldowns": {MOTION: 180},
             "no_motion_timeout": 3600,
             "open_no_motion_timeout": 0,
+            "master_reset_entity": "input_boolean.old_master",
         },
     )
     entry.add_to_hass(hass)
     hass.states.async_set(MEDIA_PLAYER, "playing")
     hass.states.async_set(MOTION, "off")
+    if master is not None:
+        hass.states.async_set(master, "on")
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["step_id"] == "init"
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        _base_input("New Name"),
+        {
+            **_base_input("New Name"),
+            **({"master_reset_entity": master} if master else {}),
+        },
     )
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
@@ -178,6 +206,8 @@ async def test_options_flow_updates_config_entry_title(
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.title == "New Name"
+    assert result["data"]["master_reset_entity"] == master
+    await hass.async_block_till_done()
 
 
 async def test_config_flow_rejects_same_entity_in_both_source_roles(
@@ -201,8 +231,10 @@ async def test_config_flow_rejects_same_entity_in_both_source_roles(
     assert result["errors"]["motion_entities"] == "same_source_roles"
 
 
+@pytest.mark.parametrize("field", ["motion_entities", "master_reset_entity"])
 async def test_options_flow_rejects_presence_entity_as_source(
     hass: HomeAssistant,
+    field: str,
 ) -> None:
     """A helper cannot select its generated entity as a source."""
     entry = MockConfigEntry(
@@ -226,7 +258,11 @@ async def test_options_flow_rejects_presence_entity_as_source(
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     user_input = _base_input("Existing Presence")
-    user_input["motion_entities"] = [registry_entry.entity_id]
+    user_input[field] = (
+        registry_entry.entity_id
+        if field == "master_reset_entity"
+        else [registry_entry.entity_id]
+    )
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         user_input,
@@ -234,11 +270,13 @@ async def test_options_flow_rejects_presence_entity_as_source(
 
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "init"
-    assert result["errors"]["motion_entities"] == "self_reference"
+    assert result["errors"][field] == "self_reference"
 
 
+@pytest.mark.parametrize("field", ["door_entities", "master_reset_entity"])
 async def test_options_flow_rejects_indirect_presence_cycle(
     hass: HomeAssistant,
+    field: str,
 ) -> None:
     """Two generated presence helpers cannot depend on each other."""
     first = MockConfigEntry(
@@ -264,8 +302,8 @@ async def test_options_flow_rejects_indirect_presence_cycle(
         title="Second Presence",
         data={
             **_base_input("Second Presence"),
-            "door_entities": [first_entity.entity_id],
-            "control_active_states": {first_entity.entity_id: ["on"]},
+            "master_reset_entity": first_entity.entity_id,
+            "control_active_states": {MEDIA_PLAYER: ["playing"]},
             "motion_cooldowns": {MOTION: 180},
         },
     )
@@ -279,7 +317,11 @@ async def test_options_flow_rejects_indirect_presence_cycle(
 
     result = await hass.config_entries.options.async_init(first.entry_id)
     user_input = _base_input("First Presence")
-    user_input["door_entities"] = [second_entity.entity_id]
+    user_input[field] = (
+        second_entity.entity_id
+        if field == "master_reset_entity"
+        else [second_entity.entity_id]
+    )
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         user_input,
@@ -287,4 +329,4 @@ async def test_options_flow_rejects_indirect_presence_cycle(
 
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "init"
-    assert result["errors"]["door_entities"] == "presence_cycle"
+    assert result["errors"][field] == "presence_cycle"

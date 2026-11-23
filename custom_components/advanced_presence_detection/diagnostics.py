@@ -12,6 +12,7 @@ from homeassistant.helpers import entity_registry as er
 from .const import (
     CONF_CONTROL_ACTIVE_STATES,
     CONF_CONTROL_ENTITIES,
+    CONF_MASTER_RESET_ENTITY,
     CONF_MOTION_COOLDOWNS,
     CONF_MOTION_ENTITIES,
     DOMAIN,
@@ -21,6 +22,7 @@ from .source_graph import source_entity_ids
 TO_REDACT = {
     CONF_CONTROL_ACTIVE_STATES,
     CONF_CONTROL_ENTITIES,
+    CONF_MASTER_RESET_ENTITY,
     CONF_MOTION_COOLDOWNS,
     CONF_MOTION_ENTITIES,
     "entity_id",
@@ -83,18 +85,27 @@ async def async_get_config_entry_diagnostics(
     for entity_id in source_entity_ids(entry):
         state = hass.states.get(entity_id)
         is_control = entity_id in controls
+        is_master = entity_id == config.get(CONF_MASTER_RESET_ENTITY)
         sources.append(
             async_redact_data(
                 {
                     "entity_id": entity_id,
-                    "role": "control" if is_control else "motion",
+                    "role": (
+                        "master_reset"
+                        if is_master
+                        else "control"
+                        if is_control
+                        else "motion"
+                    ),
                     "state": None if state is None else state.state,
                     "available": state is not None
                     and state.state not in ("unknown", "unavailable"),
                     "active_states": (
                         active_states.get(entity_id) if is_control else None
                     ),
-                    "cooldown": (None if is_control else cooldowns.get(entity_id)),
+                    "cooldown": (
+                        None if is_control or is_master else cooldowns.get(entity_id)
+                    ),
                 },
                 TO_REDACT,
             )

@@ -15,7 +15,8 @@
           "unavailable_behavior": "Wat moet er gebeuren als een gekozen bron niet beschikbaar is?",
           "show_debug_attributes": "Debugattributen tonen",
           "no_motion_timeout_minutes": "Timeout zonder beweging bij gesloten/actieve controles in minuten",
-          "open_no_motion_timeout_minutes": "Vertraging zonder beweging bij inactieve controles in minuten"
+          "open_no_motion_timeout_minutes": "Vertraging zonder beweging bij inactieve controles in minuten",
+          "master_reset_entity": "Entiteit voor hoofdreset (optioneel)"
         },
         "data_description": {
           "name": "De naam die Home Assistant toont voor de nieuwe aanwezigheidssensor.",
@@ -27,7 +28,8 @@
           "unavailable_behavior": "Kies of een ontbrekende, onbekende of niet-beschikbare bron deze aanwezigheidssensor niet beschikbaar moet maken, of gewoon als inactief/uit moet tellen.",
           "show_debug_attributes": "Standaard uit. Zet dit alleen aan bij het oplossen van problemen om gedetailleerde bronstatussen, evaluaties, timers, cooldowns en wachtende bevestigingen te tonen.",
           "no_motion_timeout_minutes": "Minuten. Wanneer aanwezigheid wordt vastgehouden terwijl controles gesloten/actief zijn, schakel uit na zoveel minuten zonder beweging. Gebruik 60 voor één uur. Gebruik 0 om deze limiet uit te zetten.",
-          "open_no_motion_timeout_minutes": "Minuten. Wanneer de controles open/uit zijn, blijft aanwezigheid nog zo lang aan nadat alle bewegingssensoren uit zijn. Gebruik 0 om beweging direct te volgen."
+          "open_no_motion_timeout_minutes": "Minuten. Wanneer de controles open/uit zijn, blijft aanwezigheid nog zo lang aan nadat alle bewegingssensoren uit zijn. Gebruik 0 om beweging direct te volgen.",
+          "master_reset_entity": "Optioneel. Kies een schakelaar, schakelhelper of andere besturingsentiteit. Bij een overgang van een bekende status naar uit gaat aanwezigheid eenmalig uit en worden alle timers en vastgehouden aanwezigheid gewist. Uit blijven blokkeert de detectie niet: latere bewegings- of besturingsgebeurtenissen kunnen aanwezigheid weer inschakelen. Inschakelen van deze entiteit doet niets. Een bestaande uit-status bij het opstarten of na herstel veroorzaakt geen reset."
         }
       },
       "control_state": {
@@ -75,7 +77,8 @@
           "unavailable_behavior": "Wat moet er gebeuren als een gekozen bron niet beschikbaar is?",
           "show_debug_attributes": "Debugattributen tonen",
           "no_motion_timeout_minutes": "Timeout zonder beweging bij gesloten/actieve controles in minuten",
-          "open_no_motion_timeout_minutes": "Vertraging zonder beweging bij inactieve controles in minuten"
+          "open_no_motion_timeout_minutes": "Vertraging zonder beweging bij inactieve controles in minuten",
+          "master_reset_entity": "Entiteit voor hoofdreset (optioneel)"
         },
         "data_description": {
           "name": "De naam die Home Assistant toont voor de aanwezigheidssensor.",
@@ -87,7 +90,8 @@
           "unavailable_behavior": "Kies of een ontbrekende, onbekende of niet-beschikbare bron deze aanwezigheidssensor niet beschikbaar moet maken, of gewoon als inactief/uit moet tellen.",
           "show_debug_attributes": "Standaard uit. Zet dit alleen aan bij het oplossen van problemen om gedetailleerde bronstatussen, evaluaties, timers, cooldowns en wachtende bevestigingen te tonen.",
           "no_motion_timeout_minutes": "Minuten. Wanneer aanwezigheid wordt vastgehouden terwijl controles gesloten/actief zijn, schakel uit na zoveel minuten zonder beweging. Gebruik 60 voor één uur. Gebruik 0 om deze limiet uit te zetten.",
-          "open_no_motion_timeout_minutes": "Minuten. Wanneer de controles open/uit zijn, blijft aanwezigheid nog zo lang aan nadat alle bewegingssensoren uit zijn. Gebruik 0 om beweging direct te volgen."
+          "open_no_motion_timeout_minutes": "Minuten. Wanneer de controles open/uit zijn, blijft aanwezigheid nog zo lang aan nadat alle bewegingssensoren uit zijn. Gebruik 0 om beweging direct te volgen.",
+          "master_reset_entity": "Optioneel. Kies een schakelaar, schakelhelper of andere besturingsentiteit. Bij een overgang van een bekende status naar uit gaat aanwezigheid eenmalig uit en worden alle timers en vastgehouden aanwezigheid gewist. Uit blijven blokkeert de detectie niet: latere bewegings- of besturingsgebeurtenissen kunnen aanwezigheid weer inschakelen. Inschakelen van deze entiteit doet niets. Een bestaande uit-status bij het opstarten of na herstel veroorzaakt geen reset."
         }
       },
       "control_state": {

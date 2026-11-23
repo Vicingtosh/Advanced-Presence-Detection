@@ -15,7 +15,8 @@
           "unavailable_behavior": "What should happen if a selected source is unavailable?",
           "show_debug_attributes": "Show debug attributes",
           "no_motion_timeout_minutes": "Closed/active no-motion timeout in minutes",
-          "open_no_motion_timeout_minutes": "Inactive no-motion delay in minutes"
+          "open_no_motion_timeout_minutes": "Inactive no-motion delay in minutes",
+          "master_reset_entity": "Master reset entity (optional)"
         },
         "data_description": {
           "name": "The name Home Assistant will show for the new presence sensor.",
@@ -27,7 +28,8 @@
           "unavailable_behavior": "Choose whether a missing, unknown, or unavailable selected source should make this presence sensor unavailable, or should simply count as inactive/off.",
           "show_debug_attributes": "Off by default. Turn this on only while troubleshooting to show detailed source states, evaluations, timers, cooldowns, and pending confirmations.",
           "no_motion_timeout_minutes": "Minutes. When presence is being held while controls are closed/active, turn it off after this many minutes with no motion. Use 60 for one hour. Use 0 to disable this limit.",
-          "open_no_motion_timeout_minutes": "Minutes. When the controls are open/off, keep presence on this long after all motion sensors turn off. Use 0 to follow motion immediately."
+          "open_no_motion_timeout_minutes": "Minutes. When the controls are open/off, keep presence on this long after all motion sensors turn off. Use 0 to follow motion immediately.",
+          "master_reset_entity": "Optional. Choose a switch, toggle helper, or another control entity. When it changes from a known state to off, presence turns off once and all timers and latches are cleared. Staying off does not block detection: later motion or control events can turn presence on again. Turning this entity on does nothing. An already-off state at startup or after recovery does not trigger a reset."
         }
       },
       "control_state": {
@@ -75,7 +77,8 @@
           "unavailable_behavior": "What should happen if a selected source is unavailable?",
           "show_debug_attributes": "Show debug attributes",
           "no_motion_timeout_minutes": "Closed/active no-motion timeout in minutes",
-          "open_no_motion_timeout_minutes": "Inactive no-motion delay in minutes"
+          "open_no_motion_timeout_minutes": "Inactive no-motion delay in minutes",
+          "master_reset_entity": "Master reset entity (optional)"
         },
         "data_description": {
           "name": "The name Home Assistant shows for the presence sensor.",
@@ -87,7 +90,8 @@
           "unavailable_behavior": "Choose whether a missing, unknown, or unavailable selected source should make this presence sensor unavailable, or should simply count as inactive/off.",
           "show_debug_attributes": "Off by default. Turn this on only while troubleshooting to show detailed source states, evaluations, timers, cooldowns, and pending confirmations.",
           "no_motion_timeout_minutes": "Minutes. When presence is being held while controls are closed/active, turn it off after this many minutes with no motion. Use 60 for one hour. Use 0 to disable this limit.",
-          "open_no_motion_timeout_minutes": "Minutes. When the controls are open/off, keep presence on this long after all motion sensors turn off. Use 0 to follow motion immediately."
+          "open_no_motion_timeout_minutes": "Minutes. When the controls are open/off, keep presence on this long after all motion sensors turn off. Use 0 to follow motion immediately.",
+          "master_reset_entity": "Optional. Choose a switch, toggle helper, or another control entity. When it changes from a known state to off, presence turns off once and all timers and latches are cleared. Staying off does not block detection: later motion or control events can turn presence on again. Turning this entity on does nothing. An already-off state at startup or after recovery does not trigger a reset."
         }
       },
       "control_state": {

@@ -15,7 +15,8 @@
           "unavailable_behavior": "Que faire si une source choisie est indisponible ?",
           "show_debug_attributes": "Afficher les attributs de débogage",
           "no_motion_timeout_minutes": "Délai sans mouvement quand fermé/actif, en minutes",
-          "open_no_motion_timeout_minutes": "Délai sans mouvement quand inactif, en minutes"
+          "open_no_motion_timeout_minutes": "Délai sans mouvement quand inactif, en minutes",
+          "master_reset_entity": "Entité de réinitialisation générale (facultatif)"
         },
         "data_description": {
           "name": "Le nom affiché par Home Assistant pour le nouveau capteur de présence.",
@@ -27,7 +28,8 @@
           "unavailable_behavior": "Choisissez si une source manquante, inconnue ou indisponible doit rendre ce capteur de présence indisponible, ou simplement compter comme inactive/éteinte.",
           "show_debug_attributes": "Désactivé par défaut. Activez cette option uniquement pour le dépannage afin d'afficher les états détaillés des sources, les évaluations, les minuteurs, les cooldowns et les confirmations en attente.",
           "no_motion_timeout_minutes": "Minutes. Lorsque la présence est maintenue pendant que les contrôles sont fermés/actifs, éteindre après ce nombre de minutes sans mouvement. Utilisez 60 pour une heure. Utilisez 0 pour désactiver cette limite.",
-          "open_no_motion_timeout_minutes": "Minutes. Lorsque les contrôles sont ouverts/éteints, garder la présence allumée pendant cette durée après l'extinction de tous les capteurs de mouvement. Utilisez 0 pour suivre le mouvement immédiatement."
+          "open_no_motion_timeout_minutes": "Minutes. Lorsque les contrôles sont ouverts/éteints, garder la présence allumée pendant cette durée après l'extinction de tous les capteurs de mouvement. Utilisez 0 pour suivre le mouvement immédiatement.",
+          "master_reset_entity": "Facultatif. Choisissez un interrupteur, un assistant de type bascule ou une autre entité de contrôle. Lorsqu’elle passe d’un état connu à éteint, la présence est désactivée une fois et tous les temporisateurs et la présence mémorisée sont effacés. Rester éteinte ne bloque pas la détection : les mouvements ou changements des contrôles peuvent réactiver la présence. L’allumer ne fait rien. Un état déjà éteint au démarrage ou après une reconnexion ne provoque pas de réinitialisation."
         }
       },
       "control_state": {
@@ -75,7 +77,8 @@
           "unavailable_behavior": "Que faire si une source choisie est indisponible ?",
           "show_debug_attributes": "Afficher les attributs de débogage",
           "no_motion_timeout_minutes": "Délai sans mouvement quand fermé/actif, en minutes",
-          "open_no_motion_timeout_minutes": "Délai sans mouvement quand inactif, en minutes"
+          "open_no_motion_timeout_minutes": "Délai sans mouvement quand inactif, en minutes",
+          "master_reset_entity": "Entité de réinitialisation générale (facultatif)"
         },
         "data_description": {
           "name": "Le nom affiché par Home Assistant pour le capteur de présence.",
@@ -87,7 +90,8 @@
           "unavailable_behavior": "Choisissez si une source manquante, inconnue ou indisponible doit rendre ce capteur de présence indisponible, ou simplement compter comme inactive/éteinte.",
           "show_debug_attributes": "Désactivé par défaut. Activez cette option uniquement pour le dépannage afin d'afficher les états détaillés des sources, les évaluations, les minuteurs, les cooldowns et les confirmations en attente.",
           "no_motion_timeout_minutes": "Minutes. Lorsque la présence est maintenue pendant que les contrôles sont fermés/actifs, éteindre après ce nombre de minutes sans mouvement. Utilisez 60 pour une heure. Utilisez 0 pour désactiver cette limite.",
-          "open_no_motion_timeout_minutes": "Minutes. Lorsque les contrôles sont ouverts/éteints, garder la présence allumée pendant cette durée après l'extinction de tous les capteurs de mouvement. Utilisez 0 pour suivre le mouvement immédiatement."
+          "open_no_motion_timeout_minutes": "Minutes. Lorsque les contrôles sont ouverts/éteints, garder la présence allumée pendant cette durée après l'extinction de tous les capteurs de mouvement. Utilisez 0 pour suivre le mouvement immédiatement.",
+          "master_reset_entity": "Facultatif. Choisissez un interrupteur, un assistant de type bascule ou une autre entité de contrôle. Lorsqu’elle passe d’un état connu à éteint, la présence est désactivée une fois et tous les temporisateurs et la présence mémorisée sont effacés. Rester éteinte ne bloque pas la détection : les mouvements ou changements des contrôles peuvent réactiver la présence. L’allumer ne fait rien. Un état déjà éteint au démarrage ou après une reconnexion ne provoque pas de réinitialisation."
         }
       },
       "control_state": {

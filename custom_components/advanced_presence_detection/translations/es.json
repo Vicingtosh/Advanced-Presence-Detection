@@ -15,7 +15,8 @@
           "unavailable_behavior": "¿Qué debe pasar si una fuente elegida no está disponible?",
           "show_debug_attributes": "Mostrar atributos de depuración",
           "no_motion_timeout_minutes": "Tiempo sin movimiento con controles cerrados/activos en minutos",
-          "open_no_motion_timeout_minutes": "Retraso sin movimiento con controles inactivos en minutos"
+          "open_no_motion_timeout_minutes": "Retraso sin movimiento con controles inactivos en minutos",
+          "master_reset_entity": "Entidad de reinicio general (opcional)"
         },
         "data_description": {
           "name": "El nombre que Home Assistant mostrará para el nuevo sensor de presencia.",
@@ -27,7 +28,8 @@
           "unavailable_behavior": "Elige si una fuente perdida, desconocida o no disponible debe hacer que este sensor de presencia no esté disponible, o si simplemente debe contar como inactiva/apagada.",
           "show_debug_attributes": "Desactivado de forma predeterminada. Actívalo solo para solucionar problemas y mostrar estados detallados de las fuentes, evaluaciones, temporizadores, cooldowns y confirmaciones pendientes.",
           "no_motion_timeout_minutes": "Minutos. Cuando la presencia se mantiene mientras los controles están cerrados/activos, apagar después de esta cantidad de minutos sin movimiento. Usa 60 para una hora. Usa 0 para desactivar este límite.",
-          "open_no_motion_timeout_minutes": "Minutos. Cuando los controles están abiertos/apagados, mantener la presencia encendida durante este tiempo después de que todos los sensores de movimiento se apaguen. Usa 0 para seguir el movimiento de inmediato."
+          "open_no_motion_timeout_minutes": "Minutos. Cuando los controles están abiertos/apagados, mantener la presencia encendida durante este tiempo después de que todos los sensores de movimiento se apaguen. Usa 0 para seguir el movimiento de inmediato.",
+          "master_reset_entity": "Opcional. Elige un interruptor, un ayudante de tipo conmutador u otra entidad de control. Cuando pasa de un estado conocido a apagado, la presencia se desactiva una vez y se borran todos los temporizadores y la presencia retenida. Permanecer apagada no bloquea la detección: posteriores eventos de movimiento o control pueden activar la presencia. Encender esta entidad no tiene efecto. Un estado ya apagado al arrancar o tras recuperarse no provoca un reinicio."
         }
       },
       "control_state": {
@@ -75,7 +77,8 @@
           "unavailable_behavior": "¿Qué debe pasar si una fuente elegida no está disponible?",
           "show_debug_attributes": "Mostrar atributos de depuración",
           "no_motion_timeout_minutes": "Tiempo sin movimiento con controles cerrados/activos en minutos",
-          "open_no_motion_timeout_minutes": "Retraso sin movimiento con controles inactivos en minutos"
+          "open_no_motion_timeout_minutes": "Retraso sin movimiento con controles inactivos en minutos",
+          "master_reset_entity": "Entidad de reinicio general (opcional)"
         },
         "data_description": {
           "name": "El nombre que Home Assistant muestra para el sensor de presencia.",
@@ -87,7 +90,8 @@
           "unavailable_behavior": "Elige si una fuente perdida, desconocida o no disponible debe hacer que este sensor de presencia no esté disponible, o si simplemente debe contar como inactiva/apagada.",
           "show_debug_attributes": "Desactivado de forma predeterminada. Actívalo solo para solucionar problemas y mostrar estados detallados de las fuentes, evaluaciones, temporizadores, cooldowns y confirmaciones pendientes.",
           "no_motion_timeout_minutes": "Minutos. Cuando la presencia se mantiene mientras los controles están cerrados/activos, apagar después de esta cantidad de minutos sin movimiento. Usa 60 para una hora. Usa 0 para desactivar este límite.",
-          "open_no_motion_timeout_minutes": "Minutos. Cuando los controles están abiertos/apagados, mantener la presencia encendida durante este tiempo después de que todos los sensores de movimiento se apaguen. Usa 0 para seguir el movimiento de inmediato."
+          "open_no_motion_timeout_minutes": "Minutos. Cuando los controles están abiertos/apagados, mantener la presencia encendida durante este tiempo después de que todos los sensores de movimiento se apaguen. Usa 0 para seguir el movimiento de inmediato.",
+          "master_reset_entity": "Opcional. Elige un interruptor, un ayudante de tipo conmutador u otra entidad de control. Cuando pasa de un estado conocido a apagado, la presencia se desactiva una vez y se borran todos los temporizadores y la presencia retenida. Permanecer apagada no bloquea la detección: posteriores eventos de movimiento o control pueden activar la presencia. Encender esta entidad no tiene efecto. Un estado ya apagado al arrancar o tras recuperarse no provoca un reinicio."
         }
       },
       "control_state": {

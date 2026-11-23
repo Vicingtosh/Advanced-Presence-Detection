@@ -15,7 +15,8 @@
           "unavailable_behavior": "Was soll passieren, wenn eine ausgewählte Quelle nicht verfügbar ist?",
           "show_debug_attributes": "Debug-Attribute anzeigen",
           "no_motion_timeout_minutes": "Timeout ohne Bewegung bei geschlossen/aktiv in Minuten",
-          "open_no_motion_timeout_minutes": "Verzögerung ohne Bewegung bei inaktiv in Minuten"
+          "open_no_motion_timeout_minutes": "Verzögerung ohne Bewegung bei inaktiv in Minuten",
+          "master_reset_entity": "Entität zum Zurücksetzen (optional)"
         },
         "data_description": {
           "name": "Der Name, den Home Assistant für den neuen Anwesenheitssensor anzeigt.",
@@ -27,7 +28,8 @@
           "unavailable_behavior": "Wähle, ob eine fehlende, unbekannte oder nicht verfügbare Quelle diesen Anwesenheitssensor nicht verfügbar machen soll, oder ob sie einfach als inaktiv/aus zählt.",
           "show_debug_attributes": "Standardmäßig ausgeschaltet. Nur zur Fehlersuche einschalten, um detaillierte Quellzustände, Auswertungen, Timer, Cooldowns und ausstehende Bestätigungen anzuzeigen.",
           "no_motion_timeout_minutes": "Minuten. Wenn Anwesenheit gehalten wird, während Steuerungen geschlossen/aktiv sind, nach so vielen Minuten ohne Bewegung ausschalten. Nutze 60 für eine Stunde. Nutze 0, um diese Grenze zu deaktivieren.",
-          "open_no_motion_timeout_minutes": "Minuten. Wenn die Steuerungen offen/aus sind, bleibt Anwesenheit so lange an, nachdem alle Bewegungssensoren aus sind. Nutze 0, um Bewegung sofort zu folgen."
+          "open_no_motion_timeout_minutes": "Minuten. Wenn die Steuerungen offen/aus sind, bleibt Anwesenheit so lange an, nachdem alle Bewegungssensoren aus sind. Nutze 0, um Bewegung sofort zu folgen.",
+          "master_reset_entity": "Optional. Wähle einen Schalter, einen Umschalt-Helfer oder eine andere Steuerentität. Beim Wechsel von einem bekannten Zustand zu aus wird die Anwesenheit einmal ausgeschaltet; alle Timer und gespeicherte Anwesenheit werden gelöscht. Ausgeschaltet bleiben blockiert die Erkennung nicht: Neue Bewegungs- oder Steuerereignisse können Anwesenheit wieder einschalten. Einschalten dieser Entität bewirkt nichts. Ein bereits ausgeschalteter Zustand beim Start oder nach Wiederherstellung löst kein Zurücksetzen aus."
         }
       },
       "control_state": {
@@ -75,7 +77,8 @@
           "unavailable_behavior": "Was soll passieren, wenn eine ausgewählte Quelle nicht verfügbar ist?",
           "show_debug_attributes": "Debug-Attribute anzeigen",
           "no_motion_timeout_minutes": "Timeout ohne Bewegung bei geschlossen/aktiv in Minuten",
-          "open_no_motion_timeout_minutes": "Verzögerung ohne Bewegung bei inaktiv in Minuten"
+          "open_no_motion_timeout_minutes": "Verzögerung ohne Bewegung bei inaktiv in Minuten",
+          "master_reset_entity": "Entität zum Zurücksetzen (optional)"
         },
         "data_description": {
           "name": "Der Name, den Home Assistant für den Anwesenheitssensor anzeigt.",
@@ -87,7 +90,8 @@
           "unavailable_behavior": "Wähle, ob eine fehlende, unbekannte oder nicht verfügbare Quelle diesen Anwesenheitssensor nicht verfügbar machen soll, oder ob sie einfach als inaktiv/aus zählt.",
           "show_debug_attributes": "Standardmäßig ausgeschaltet. Nur zur Fehlersuche einschalten, um detaillierte Quellzustände, Auswertungen, Timer, Cooldowns und ausstehende Bestätigungen anzuzeigen.",
           "no_motion_timeout_minutes": "Minuten. Wenn Anwesenheit gehalten wird, während Steuerungen geschlossen/aktiv sind, nach so vielen Minuten ohne Bewegung ausschalten. Nutze 60 für eine Stunde. Nutze 0, um diese Grenze zu deaktivieren.",
-          "open_no_motion_timeout_minutes": "Minuten. Wenn die Steuerungen offen/aus sind, bleibt Anwesenheit so lange an, nachdem alle Bewegungssensoren aus sind. Nutze 0, um Bewegung sofort zu folgen."
+          "open_no_motion_timeout_minutes": "Minuten. Wenn die Steuerungen offen/aus sind, bleibt Anwesenheit so lange an, nachdem alle Bewegungssensoren aus sind. Nutze 0, um Bewegung sofort zu folgen.",
+          "master_reset_entity": "Optional. Wähle einen Schalter, einen Umschalt-Helfer oder eine andere Steuerentität. Beim Wechsel von einem bekannten Zustand zu aus wird die Anwesenheit einmal ausgeschaltet; alle Timer und gespeicherte Anwesenheit werden gelöscht. Ausgeschaltet bleiben blockiert die Erkennung nicht: Neue Bewegungs- oder Steuerereignisse können Anwesenheit wieder einschalten. Einschalten dieser Entität bewirkt nichts. Ein bereits ausgeschalteter Zustand beim Start oder nach Wiederherstellung löst kein Zurücksetzen aus."
         }
       },
       "control_state": {

@@ -1,8 +1,8 @@
 # Advanced Presence Detection
 
-[![HACS Default][hacs-shield]][hacs]
+[![Marketplace Default][marketplace-shield]][marketplace]
 [![Release][release-shield]][releases]
-[![Validate HACS][hacs-action-shield]][hacs-action]
+[![Marketplace validation][marketplace-action-shield]][marketplace-action]
 [![Hassfest][hassfest-shield]][hassfest-action]
 [![Tests][tests-shield]][tests-action]
 [![License][license-shield]][license]
@@ -34,14 +34,17 @@ Controls can be `binary_sensor`, `switch`, `input_boolean`, `fan`, `light`, `rem
 * Grace time keeps presence on while a control changes state.
 * Optional no-motion timeout while controls are active.
 * Optional no-motion delay while controls are not active.
+* Optional master-reset entity: a turn-off event clears presence, timers, and latches once.
 * Latches and active timers resume safely after a reload or restart.
 * Missing source entities create a Home Assistant Repair warning.
 * Downloadable, privacy-conscious diagnostics are available.
 * Troubleshooting attributes show how the sensor reached its current state.
 
-## Installation With HACS
+## Installation With Marketplace
 
-<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=Vicingtosh&repository=Advanced-Presence-Detection&category=integration" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
+In Home Assistant, open **Settings > Marketplace**, search for **Advanced Presence Detection**, and download it.
+
+Marketplace is included in Home Assistant 2026.11 and later. Manual installation is also available on earlier supported versions.
 
 After downloading, restart Home Assistant.
 
@@ -68,6 +71,7 @@ You choose:
 * **Presence sensor name:** the name of the new presence sensor.
 * **Controls:** doors, switches, helpers, fans, lights, remotes, media players, appliance status entities, or other entities that help keep presence on.
 * **Motion sensors:** the sensors that detect movement.
+* **Master reset entity (optional):** select a switch, toggle helper, binary sensor, fan, light, remote, or media player. When it turns off, presence turns off once and all timers and latches are cleared. Remaining off does not block detection. Leave empty if you do not need this reset.
 * **Starting motion cooldown in seconds:** the default cooldown for motion sensors.
 * **Control change grace time in seconds:** how long presence should stay on while a control changes state.
 * **Control mode:** whether all controls must be active, or whether one active control is enough.
@@ -81,6 +85,8 @@ For each control, the setup page shows the friendly name, entity id, and current
 For each motion sensor, set the cooldown that matches that sensor. The cooldown starts when the controls become active.
 
 ## How It Works
+
+The optional master-reset entity acts only when it changes from a known state to `off`. That event turns presence off once, clears the latch, and cancels all timers, including cooldown confirmations and grace periods. New motion or control events can immediately start normal detection again, even while the master remains off. Turning the master on does nothing. An off-to-off attribute update, an already-off state at startup, or recovery from an unknown/unavailable state does not trigger a reset. A missing or unavailable master does not affect normal presence detection or availability; a deleted master can still raise a Repair warning.
 
 During grace time, presence stays on. This prevents quick off/on changes when a door opens or closes, or when another activity control changes state.
 
@@ -100,6 +106,13 @@ If motion turns off before the cooldown has passed, presence turns off unless it
 * **Garage or workshop:** combine a door contact with a workbench light, remote-controlled equipment, tool outlet, or ventilation switch.
 * **Bedroom:** use a closed door, reading lamp, bed sensor, or sleep-mode helper.
 * **Media or gaming area:** use a console, projector, amplifier, or scene helper.
+* **Reset a room:** select an `input_boolean` helper as the master reset. An automation can turn it off when you leave to clear a lingering latch and any remaining delays. Detection remains active for the next movement without needing to turn the helper back on first.
+
+## Changelog
+
+* [Current development changes](CHANGELOG.md)
+* [Latest published release notes](https://github.com/Vicingtosh/Advanced-Presence-Detection/releases/latest)
+* [All releases](https://github.com/Vicingtosh/Advanced-Presence-Detection/releases)
 
 ## Troubleshooting
 
@@ -116,6 +129,8 @@ You can also download a diagnostics file from the helper's device page. Entity n
 
 Detailed attributes include:
 
+* `master_reset_entity`
+* `master_reset_state`
 * `control_entities`
 * `control_states`
 * `control_active_states`
@@ -142,10 +157,10 @@ If cooldown behavior looks wrong, check `motion_evaluations`. It shows each moti
 
 [analytics]: https://analytics.home-assistant.io/custom_integrations.json
 [downloads-shield]: https://img.shields.io/github/downloads/Vicingtosh/Advanced-Presence-Detection/total?style=for-the-badge
-[hacs]: https://www.hacs.xyz/docs/default_repositories
-[hacs-action]: https://github.com/Vicingtosh/Advanced-Presence-Detection/actions/workflows/hacs.yml
-[hacs-action-shield]: https://img.shields.io/github/actions/workflow/status/Vicingtosh/Advanced-Presence-Detection/hacs.yml?branch=main&label=HACS&style=for-the-badge
-[hacs-shield]: https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge
+[marketplace]: https://www.home-assistant.io/integrations/marketplace/
+[marketplace-action]: https://github.com/Vicingtosh/Advanced-Presence-Detection/actions/workflows/hacs.yml
+[marketplace-action-shield]: https://img.shields.io/github/actions/workflow/status/Vicingtosh/Advanced-Presence-Detection/hacs.yml?branch=main&label=Marketplace&style=for-the-badge
+[marketplace-shield]: https://img.shields.io/badge/Marketplace-Default-orange.svg?style=for-the-badge
 [hassfest-action]: https://github.com/Vicingtosh/Advanced-Presence-Detection/actions/workflows/hassfest.yml
 [hassfest-shield]: https://img.shields.io/github/actions/workflow/status/Vicingtosh/Advanced-Presence-Detection/hassfest.yml?branch=main&label=Hassfest&style=for-the-badge
 [installs-shield]: https://img.shields.io/badge/dynamic/json?style=for-the-badge&color=blue&label=installs&cacheSeconds=3600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.advanced_presence_detection.total
